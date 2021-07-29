@@ -1,0 +1,11 @@
+Programs are
+
+BuildMatrix.exe
+calcimpedance.exe
+COCR_FP.exe
+Harm1D.exe
+ImpedanceZToEdsAll.exe
+OutputNu.exe
+RegularMeshBuilder.exe
+
+If some dll files are needed, put it to this folder

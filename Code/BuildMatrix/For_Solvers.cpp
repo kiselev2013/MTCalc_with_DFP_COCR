@@ -1,0 +1,236 @@
+#include "stdafx.h"
+#include "T_Brick.h"
+
+extern ofstream logfile;
+
+void Memory_allocation_error(const char *var, const char *func)
+{
+	string str;
+	str = "MEMORY ALLOCATION ERROR for variable ";
+	str = str + '\"' + var + '\"' + " in function " + '\"' + func + "\"\n";
+	logfile << str << flush;
+	cerr    << str << flush;
+	cout << str << flush;
+	throw logic_error(str);
+}
+
+void Cannot_open_file(const char *fname, const char *func)
+{
+	string str;
+	str = "CANNOT OPEN FILE ";
+	str = str + '\"' + fname + '\"' + " in function " + '\"' + func + "\"\n";
+	logfile << str << flush;
+	cerr    << str << flush;
+	cout << str << flush;
+	throw logic_error(str);
+}
+
+void Cannot_open_file_but_continue(const char *fname, const char *func)
+{
+	string str;
+	str = "Cannot open file ";
+	str = str + '\"' + fname + '\"' + " in function " + '\"' + func + "\"\n";
+	logfile << str << flush;
+	cerr    << str << flush;
+}
+
+double Scal(double *a, double *b, long n)
+{
+	long i;
+	double sum = 0.0;
+
+	for(i=0; i<n; i++)
+		sum += a[i]*b[i];
+
+	return sum;
+}
+
+void Mult_Plot_AV(double *a, double *x, double *y, long n, long m)
+{
+	long i, j, temp;
+	double sum;
+
+	for(i=0;i<n;i++)
+	{
+		sum = 0.0;
+		temp = i*m;
+		for(j=0;j<m;j++)
+			sum += a[temp+j]*x[j];
+
+		y[i] = sum;
+	}
+}
+
+double Projection_On_Axis(double *v,double *o)
+{
+	double value;
+	value = Scal(v,o,3)/sqrt(Scal(o,o,3));
+	return value;
+}
+
+void Mult_Plot(double *a, double *x, double *y, long n)
+{
+	long i, j, temp;
+	double sum;
+
+	for(i=0;i<n;i++)
+	{
+		sum = 0.0;
+		temp = i*n;
+		for(j=0;j<n;j++)
+			sum += a[temp+j]*x[j];
+
+		y[i] = sum;
+	}
+}
+
+double Norm_Euclid(double *a, long n)
+{
+	double value;
+	value = sqrt(Scal(a,a,n));
+	return value;	
+}
+
+double Norm_Max(double *a, long n)
+{
+	double max, current;
+	long i;
+
+	max = 0.0;
+	for(i=0; i<n; i++)
+	{
+		current = a[i]*a[i];
+		if(current > max)
+			max = current;
+	}
+
+	return max;
+}
+
+void Mult_MV(long *ig, long *jg, double *ggl, double *ggu, double *di, double *x, double *y, long n)
+{
+	long i, j, k;
+
+	for(i=0; i<n; i++)
+	{
+		y[i] = di[i]*x[i];
+		for(j=ig[i]; j<=ig[i+1]-1; j++)
+		{
+			k = jg[j];
+			y[i] += ggl[j]*x[k];
+			y[k] += ggu[j]*x[i];
+		}
+	}
+}
+
+long Max_Long(long a, long b)
+{
+	if(a > b) return a;
+	return b;
+}
+
+long Min_Long(long a, long b)
+{
+	if(a < b) return a;
+	return b;
+}
+
+void Sort2(long *a, long *b)
+{
+	long tmp;
+	if(*a < *b)
+	{
+		tmp = *a;
+		*a = *b;
+		*b = tmp;
+	}
+}
+
+double Interval(double *x, double *y)
+{
+	double r;
+
+	r = sqrt((x[0]-y[0])*(x[0]-y[0]) + (x[1]-y[1])*(x[1]-y[1]) + (x[2]-y[2])*(x[2]-y[2]));
+
+	return r;
+}
+
+double Interval_Parallel_Lines(double *a0, double *a1, double *b0, double *b1)
+{
+	double ax, ay, az; // направл€ющий вектор дл€ 1-й пр€мой
+	double x1, y1, z1; // точка на первой пр€мой
+	double x0, y0, z0; // точка на второй пр€мой
+	double det1, det2, det3;
+	double answer;
+
+	ax = a1[0] - a0[0];
+	ay = a1[1] - a0[1];
+	az = a1[2] - a0[2];
+
+	x1 = a0[0];
+	y1 = a0[1];
+	z1 = a0[2];
+
+	x0 = b0[0];
+	y0 = b0[1];
+	z0 = b0[2];
+
+	det1 = ay*(z1 - z0) - az*(y1 - y0);
+	det2 = az*(x1 - x0) - ax*(z1 - z0);
+	det3 = ax*(y1 - y0) - ay*(x1 - x0);
+
+	answer = sqrt(det1*det1 + det2*det2 + det3*det3)/sqrt(ax*ax + ay*ay + az*az);
+
+	return answer;
+}
+
+double Spline(double x, long n, double *xyz, double *values)
+{
+	double s, xi;
+	long i, t, flag;
+
+	flag = 0;
+
+	if (x < xyz[0])
+	{
+		return values[0];
+	}
+
+	if (x > xyz[n-1])
+	{
+		return values[n-1];
+	}
+
+	for(i=0; i<n-1; i++)
+	{
+		if(x >= xyz[i]  &&  x <= xyz[i+1])
+		{
+			t = i;
+			flag = 1;
+			break;
+		}
+	}
+
+	if(flag == 1)
+	{
+		xi = (x - xyz[t])/(xyz[t+1] - xyz[t]);
+		s = (1.0 - xi)*values[t] + xi*values[t+1];
+	}
+	else
+	{
+		s = 0.0;
+	}
+
+	return s;
+}
+
+double Calc_dof(double *J, double *func, long n_local_edge)
+{
+	double Jt[3];
+
+	// умножаем тангенциальный вектор на матрицу якоби
+	Mult_Plot(J, (double*)TANGENT_VECTORS_ON_REFERENCE_CUBE[n_local_edge], Jt, 3);
+
+	// скал€рно умножаем на значение функции
+	return Scal(func, Jt, 3);
+}
