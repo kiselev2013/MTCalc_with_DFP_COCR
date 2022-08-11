@@ -1,8 +1,4 @@
 // BasicOperations.cpp header file
-//
-// Phd. Kiselev D.S.
-// Novosibirsk State Technical University
-// 20, Karl Marx Avenue, Novosibirsk, Russia 
 
 #ifndef __BasicOperations__H__
 #define __BasicOperations__H__
