@@ -1,3 +1,23 @@
+/**                                                                                           
+ * GENERAL REMARKS                                                                            
+ *                                                                                            
+ *  This code is freely available under the following conditions:                             
+ *                                                                                            
+ *  1) The code is to be used only for non-commercial purposes.                               
+ *  2) No changes and modifications to the code without prior permission of the developer.    
+ *  3) No forwarding the code to a third party without prior permission of the developer.     
+ *                                                                                            
+ *  			MTCalc_with_DFP_COCR                                                  
+ *  This file contains some basic routines for Solver: locally optimal scheme;                
+ *  matrix storage format: sparse row-column format                                           
+ *                                                                                            
+ *  Written by Ph.D. Petr A. Domnikov                                                         
+ *  Novosibirsk State Technical University,                                                   
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                         
+ *  p_domnikov@mail.ru                                                                        
+ *  Version 1.3 January 10, 2021                                                              
+*/                                                                                            
+
 #include "stdafx.h"
 #include "los_rsf.h"
 #include "ControlOMP.h"
@@ -38,7 +58,7 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 #endif
 
 
-	// начальное приближение
+	// initial approximation
 	#pragma omp parallel shared(x) private(i) num_threads(omp.GetNumberOfThreads())
 	{
 		#pragma omp for
@@ -48,7 +68,7 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 		}
 	}
 
-	// вычисляем невязку исходной системы
+	// calculate the residual of the original system
 	mult_mv_omp(ig, jg, ggl, ggu, di, x, h, n, y_omp);
 
 	#pragma omp parallel shared(h, f) private(i) num_threads(omp.GetNumberOfThreads())
@@ -60,10 +80,10 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 		}
 	}
 
-	// норма истинной невязки перед началом счёта
+	// norm of the true residual  before the start of counting
 	r_old = Norm_Euclid(h, n);
 
-	// проверяем, является ли уже начальное приближение решением
+	// check if the initial approximation is already a solution
 	if (r_old < 1e-30)
 	{
 		logfile << "x0 is solution.\n";
@@ -72,7 +92,7 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 		goto label1;
 	}
 
-	// невязка предобусловленной системы
+	// residual of the preconditioned system
 	solve_l_d(ig, jg, sl, d, h, r, n);
 
 	// z0
@@ -82,7 +102,7 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 	mult_mv_omp(ig, jg, ggl, ggu, di, z, h, n, y_omp);
 	solve_l_d(ig, jg, sl, d, h, p, n);
 
-	//итерационный процесс
+	/ iterative process
 	for(iter=1; iter<=maxiter; iter++)
 	{
 		// alpha
@@ -100,7 +120,7 @@ long LOS_rsf_solver::LOS_LU_sq(long n, long *ig, long *jg, double *di, double *g
 			}
 		}
 
-		// проверка на выход из итерационного процесса
+		// check for exit from the iterative process
 		//solve_l_d(ig, jg, sl, d, r, h, n);
 		mult_l_d(ig, jg, sl, d, r, h, n);
 
@@ -151,8 +171,7 @@ label1:	cout << "LOS_LU_sq: iter="<<iter<<" residual="<<r_nev<<endl;
 	return iter;
 }
 //------------------------------------------------------------------------------------------
-//-- ЛОС с диагональным предобусловливанием и дополнительным критерием останова
-//-- для задачи с петлёй на векторных элементах
+//-- LOS with diagonal preconditioning and additional stopping criterion for a problem with a loop on vector elements 
 //------------------------------------------------------------------------------------------
 long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *ggl, double *ggu,
 					  double *f, double *x, double eps, long maxiter,
@@ -165,21 +184,21 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 	double p_scal;
 	double temp;
 
-	// для досрочного выхода из итерационного процесса
+	// for early exit from the iterative process
 	double r1, r2;
 	long flag = 0;
 	bool flag_x0=false;
 	r1 = 1.0;
-	double ssf; // норма вектора правой части
+	double ssf; // right side vector norm
 
 	logfile << "LOS_diag ...\n";
 
-	// начальное приближение
+	// initial approximation
 	for(i=0; i<n; i++)
 		x[i] = 0.0;
 
-	// диагональный предобусловливатель
-	// здесь d[] - корни из модулей диагональных эл-тов в минус первой
+	// diagonal preconditioner
+	// here d[] are the roots of the modules of the diagonal elements to the minus one degree
 	for(i=0; i<n; i++)
 	{
 		temp = fabs(di[i]);
@@ -194,20 +213,20 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 		}
 	}
 
-	// вычисляем невязку исходной системы
+	//  calculate the residual of the original system
 	mult_mv(ig, jg, ggl, ggu, di, x, h, n);
 
 	for(i=0; i<n; i++)
 		h[i] = f[i] - h[i];
 
-	// норма истинной невязки перед началом счёта
+	// the norm of the true residual before the start of counting
 	r_old = Norm_Euclid(h, n);
 
-	// норма правой части
+	// right-hand side norm
 	ssf = this->Norm_Euclid(f, n);
 	logfile << "|r|=" << scientific << r_old << "\t|f|=" << ssf << '\n';
 
-	// проверяем, является ли уже начальное приближение решением
+	// check if the initial approximation is already a solution
 	if (r_old < 1e-30)
 	{
 		logfile << "x0 is solution.\n";
@@ -226,8 +245,8 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 
 	if (r_old > ssf)
 	{
-		// данное начальное приближение хуже нулевого
-		// начинаем с нулевого начального приближения
+		// this initial approximation is worse than zero
+		// start from zero initial approximation
 		logfile << "|r0|/|f|=" << scientific << r_old/ssf << " Starting with x0=0.\n";
 
 		for (i=0; i<n; i++)
@@ -239,10 +258,10 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 		r_old = ssf;
 	}
 
-	// как будто мы считаем с нулевого начального приближения
+	// as if we are counting from zero initial approximatio
 	r_old = ssf;
 
-	// невязка предобусловленной системы
+	// residual of the preconditioned system
 	for(i=0; i<n; i++)
 		r[i] = h[i]*d[i];
 
@@ -255,7 +274,7 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 	for(i=0; i<n; i++)
 		p[i] = h[i]*d[i];
 
-	//итерационный процесс
+	//iterative process
 	for(iter=1; iter<=maxiter; iter++)
 	{
 		// alpha
@@ -269,7 +288,7 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 			r[i] -= alpha*p[i];
 		}
 
-		// проверка на выход из итерационного процесса
+		// checking for exit from the iterative process
 		for(i=0; i<n; i++)
 			h[i] = r[i]/d[i];
 
@@ -281,7 +300,7 @@ long LOS_rsf_solver::LOS_diag(long n, long *ig, long *jg, double *di, double *gg
 		if(r_nev < eps)
 			goto label1;
 
-		// дополнительный критерий останова
+		// additional stop criterion
 		if (r_nev < r1 && flag == 0)
 		{
 			for(i=0; i<n; i++)

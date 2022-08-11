@@ -1,3 +1,23 @@
+/**                                                                                          
+ * GENERAL REMARKS                                                                           
+ *                                                                                           
+ *  This code is freely available under the following conditions:                            
+ *                                                                                           
+ *  1) The code is to be used only for non-commercial purposes.                              
+ *  2) No changes and modifications to the code without prior permission of the developer.   
+ *  3) No forwarding the code to a third party without prior permission of the developer.    
+ *                                                                                           
+ *  			MTCalc_with_DFP_COCR                                                 
+ *  This file contains routines for SLAE and RHS assembly in 1D MT problem 
+ *  Matrix is stored in skyline format                                     
+ *                                                                                           
+ *  Written by Ph.D. Petr A. Domnikov                                                        
+ *  Novosibirsk State Technical University,                                                  
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                        
+ *  p_domnikov@mail.ru                                                                       
+ *  Version 1.2 November 21, 2020                                                            
+*/                                                                                           
+                                                                                             
 #include "stdafx.h"
 #include "global_slae_1d_harm_prof.h"
 #include "local_matrix_1d.h"
@@ -58,27 +78,23 @@ void Global_slae_1d_harm_prof::Assembling_for_1d_harm_problem()
 	double f_im[2] = {0.0, 0.0};
 	double h;
 	long str, col;
-	long el_str; // количество ненулевых эл-тов в текущей строке
-	long el_0;   // количество нулевых эл-тов в текущей строке
-	long adr;    // адрес элемента (str,col) в массиве ggl
+	long el_str; 
+	long el_0;   
+	long adr;    
 	long displacement;
 
-	// заполнение нулями
 	for(i=0; i<n; i++)
 		di[i] = pr[i] = 0.0;
 
 	for(i=0; i<ig_n_1; i++)
 		ggl[i] = ggu[i] = 0.0;
 
-	// цикл по элементам
 	for(i=0; i<n_elem; i++)
 	{
-		// вычисляем элементы локальной матрицы
 		h = xyz[i+1] - xyz[i];
 		Local_matrix_1d L(h, mu[nvkat[i]], sigma[nvkat[i]], omega, f_re, f_im, ay_hy);
 		L.Compute_local_matrix_harm();
 
-		// заносим элементы локальной матрицы в глобальную
 		for(j=0; j<4; j++)
 		{
 			str = i*2 + j;
@@ -111,28 +127,27 @@ void Global_slae_1d_harm_prof::Assembling_for_1d_harm_problem()
 //-----------------------------------------------------------
 void Global_slae_1d_harm_prof::Set_boundary_conditions_for_Ay()
 {
-	// бак
+	
 	di[0] = di[1] = 1.0;
 	pr[0] = pr[1] = 0.0;
 	ggl[0] = 0.0;	
 	for(long i=0; i<5; i++)
 		ggu[i] = 0.0;
 
-	// второе краевое на поверхности
 	pr[n-2] += 1.0;
 }
 //-----------------------------------------------------------
 void Global_slae_1d_harm_prof::Set_boundary_conditions_for_Hy()
 {
 	long i, k;
-	// бак
+	
 	di[0] = di[1] = 1.0;
 	pr[0] = pr[1] = 0.0;
 	ggl[0] = 0.0;	
 	for(i=0; i<5; i++)
 		ggu[i] = 0.0;
 
-	// первое краевое на поверхности
+
 	pr[n-2] = 1.0;
 	pr[n-1] = 0.0;
 	di[n-1] = di[n-2] = 1.0;

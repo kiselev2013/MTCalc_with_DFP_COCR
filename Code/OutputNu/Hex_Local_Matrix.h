@@ -1,20 +1,39 @@
+/**                                                                                                                                
+ * GENERAL REMARKS                                                                                                                 
+ *                                                                                                                                 
+ *  This code is freely available under the following conditions:                                                                  
+ *                                                                                                                                 
+ *  1) The code is to be used only for non-commercial purposes.                                                                    
+ *  2) No changes and modifications to the code without prior permission of the developer.                                         
+ *  3) No forwarding the code to a third party without prior permission of the developer.                                          
+ *                                                                                                                                 
+ *  			MTCalc_with_DFP_COCR                                                                                       
+ *  Computation of local matrices on hexahedrons
+ *                                                                                                                                 
+ *  Written by Ph.D. Petr A. Domnikov                                                                                              
+ *  Novosibirsk State Technical University,                                                                                        
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                                              
+ *  p_domnikov@mail.ru                                                                                                             
+ *  Version 1.2 March 10, 2021                                                                                                     
+*/                                                                                                                                 
+
 #pragma once
 //--------------------------------------------
 class Hex_Local_Matrix
 {
 public:
 	int number_of_element;
-	double x[8], y[8], z[8]; // координаты вершин шестигранника	
-	double J[3][3];          // матрица Якоби
+	double x[8], y[8], z[8]; // coordinates of the vertices of the hexahedrons	
+	double J[3][3];          // the Jacobi matrix
 	double J_1_T[3][3];		 // J^{-T}
-	double det_J;            // Якобиан (определитель матрицы Якоби)
-	double det_J_abs;        // модуль Якобиана
-	int type_of_hex; // 0..30 - параллелепипед, 31..61 - шестигранник
-	double grad_all[8][3]; // градиенты от баз. функций в точке интегрирования
-	// локальные матрицы 8х8 (обычные, не блочные)
-	double b[8][8]; // матрица массы
-	double hx, hy, hz; // для параллелепипеда
-	bool JforParCalc; // вычислялся ли ранее Якобиан в случае параллелепипеда
+	double det_J;            // Jacobian (determinant of the Jacobian matrix)
+	double det_J_abs;        // Jacobian modulus
+	int type_of_hex; // 0..30 - parallelepiped, 31..61 - hexahedron
+	double grad_all[8][3]; // gradients from basis functions at integration point
+	// local matrices 8x8 (regular, non-block)
+	double b[8][8]; // mass matrix
+	double hx, hy, hz; // for the parallelepiped
+	bool JforParCalc; // whether the Jacobian was previously calculated in the case of a parallelepiped
 	void Calc_J(int n_of_point);
 	void Calc_local_matrix_b_for_parallelepiped();
 	void CalcMassMatrix();

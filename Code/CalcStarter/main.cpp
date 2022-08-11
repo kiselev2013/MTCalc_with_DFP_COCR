@@ -1,3 +1,22 @@
+/**
+ *  This code is freely available under the following conditions:
+ *
+ *  1) The code is to be used only for non-commercial purposes.
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer.
+ *
+ *
+ * The programm runs main calculation procedures sequense
+ * Contains functions for preparing calculation directories and 
+ * starting calculation programs
+ *
+ *  Written by Ph.D. Dmitry S. Kiselev
+ *  Novosibirsk State Technical University,
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia
+ *  harlequin_00@mail.ru
+ *  Version 1.1 July, 2021
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -9,23 +28,25 @@ using namespace std;
 char currentBigLetter[] = {'Y', 'X'};
 char currentSmallLetter[] = { 'y', 'x' };
 
+// Calculation settings class
 class Settings
 {
 public:
-	double steps[3];
-	double sparse[3];
-	double farBound[3];
-	double gapFromReceivers[3];
-	double eps = 0.1;
-	int threadsCount = 1;
-	double SLAESolutionEps = 1e-4;
-	int maxIterationsCount = 10000;
+	double steps[3]; // Mesh initial steps
+	double sparse[3]; // Sparce coefficient
+	double farBound[3]; // Distance from receivers bounding box+gap to the boundary of the calculation domain
+	double gapFromReceivers[3]; // Gap between receivers bounding box and sparced mesh area
+	double eps = 0.1; // Gate for determining if coordinate lines are equal
+	int threadsCount = 1; // Threads count for parallel calculation
+	double SLAESolutionEps = 1e-4; // relative residual for determining if SLAE solving is finished
+	int maxIterationsCount = 10000; // Maximum iterations when solving SLAE
 
 	Settings() { }
 };
 
 FILE *log_file = NULL;
 
+// Write message to log
 void write_to_log(char *str)
 {
 	printf("%s", str);
@@ -35,6 +56,8 @@ void write_to_log(char *str)
 		fflush(log_file);
 	}
 }
+
+// Write message to log
 void write_to_log(const char *str)
 {
 	printf("%s", str);
@@ -45,6 +68,7 @@ void write_to_log(const char *str)
 	}
 }
 
+// Open file for reading
 int open_file_r(char *file_name, FILE **file_stream)
 {
 	char buf[2048];
@@ -58,6 +82,8 @@ int open_file_r(char *file_name, FILE **file_stream)
 
 	return 0;
 }
+
+// Open file for writing 
 int open_file_w(char *file_name, FILE **file_stream)
 {
 	char buf[2048];
@@ -71,6 +97,8 @@ int open_file_w(char *file_name, FILE **file_stream)
 
 	return 0;
 }
+
+// Open log file
 int open_log(char *file_name)
 {
 	if (open_file_w(file_name, &log_file) != 0)
@@ -82,6 +110,7 @@ int open_log(char *file_name)
 	return 0;
 }
 
+// Run Windows executable file
 int ExecuteExe(const char *cmdline, char *workdir)
 {
 	int retCode;
@@ -101,7 +130,7 @@ int ExecuteExe(const char *cmdline, char *workdir)
 	return retCode;
 }
 
-
+// Read application settings file
 int ReadSettings(char *file_name, Settings &settings)
 {
 	FILE *file_in = NULL;
@@ -118,6 +147,8 @@ int ReadSettings(char *file_name, Settings &settings)
 	fclose(file_in);
 	return 0;
 }
+
+// Read frequencies
 int ReadFrequencies(char *file_name, vector<double> &frequencies)
 {
 	FILE *file_in = NULL;
@@ -144,6 +175,7 @@ int ReadFrequencies(char *file_name, vector<double> &frequencies)
 	return 0;
 }
 
+// Write settings file
 int WriteSettings(char *file_name, Settings &settings, int currentDirection, double frequency)
 {
 	FILE *file_out = NULL;
@@ -164,6 +196,8 @@ int WriteSettings(char *file_name, Settings &settings, int currentDirection, dou
 	return 0;
 
 }
+
+// Write frequencies file
 int WriteFreq(char *file_name, vector<double> &frequencies)
 {
 	FILE *file_out = NULL;
@@ -176,6 +210,7 @@ int WriteFreq(char *file_name, vector<double> &frequencies)
 	return 0;
 }
 
+// Write frequencies file (another format)
 int WriteFrec(char *file_name, vector<double> &frequencies)
 {
 	FILE *file_out = NULL;
@@ -189,7 +224,7 @@ int WriteFrec(char *file_name, vector<double> &frequencies)
 	return 0;
 }
 
-
+// Prepare directory for frequency, current direction
 int PrepareDirectoryNu(Settings &settings, int frequencyIndex, double frequency, int currentDirection)
 {
 	char path[2048], fileName[2048];
@@ -206,6 +241,8 @@ int PrepareDirectoryNu(Settings &settings, int frequencyIndex, double frequency,
 
 	return 0;
 }
+
+// Prepare directory for frequency calculation
 int PrepareDirectory(Settings &settings, vector<double> &frequencies)
 {
 	_mkdir("Calculation");
@@ -220,6 +257,7 @@ int PrepareDirectory(Settings &settings, vector<double> &frequencies)
 	return 0;
 }
 
+// Copying result files to common 'Results' folder
 int CopyResultFiles(int frequencyIndex, int currentDirection)
 {
 	char path[2048], fileName[2048], sourceFileName[2048], destFileName[2048], buf[2048];
@@ -248,6 +286,8 @@ int CopyResultFiles(int frequencyIndex, int currentDirection)
 
 	return 0;
 }
+
+// Run calculation for frequency, current direction
 int RunCalculation(int frequencyIndex, int currentDirection)
 {
 	char path[2048], buf[2048];
@@ -266,6 +306,8 @@ int RunCalculation(int frequencyIndex, int currentDirection)
 
 	return 0;
 }
+
+// Run calculations for all frequencies
 int RunCalculations(vector<double> &frequencies)
 {
 	for (int frequencyIndex = 0; frequencyIndex < frequencies.size(); frequencyIndex++)
@@ -282,6 +324,7 @@ int RunCalculations(vector<double> &frequencies)
 	return 0;
 }
 
+// Calling common procedures
 int MainProcedure()
 {
 	Settings settings;

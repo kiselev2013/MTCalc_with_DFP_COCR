@@ -1,9 +1,16 @@
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// This module contain functions for Gauss method (LU-decomposition)
+//
+// Phd. Domnikov P.A.
+// Novosibirsk State Technical University
+// 20, Karl Marx Avenue, Novosibirsk, Russia 
+
 #include "stdafx.h"
 #include "linalg.h"
 #include "retcode.h"
-//------------------------------------------------------------------------
-// Скалярное произведение векторов
-//------------------------------------------------------------------------
+
+// Dot product of vectors
 complex<double> dot(complex<double> *a, complex<double> *b, int n)
 {
 	complex<double> s = 0;
@@ -22,10 +29,10 @@ complex<double> dot(complex<double> *a, complex<double> *b, int n)
 
 	return s;
 }
+
+// Helper function for LU-decomposition
 void ger(complex<double> *a, complex<double> *x, complex<double> *y, int n, int m, int lda)
 {
-	
-
 	int i, j;
 	int adr;
 	complex<double> temp;
@@ -51,9 +58,8 @@ void ger(complex<double> *a, complex<double> *x, complex<double> *y, int n, int 
 		}
 	}
 }
-//------------------------------------------------------------------------
-// LU-разложение
-//------------------------------------------------------------------------
+
+// LU-decomposition
 int getf2(complex<double> *a, int m, int n, int lda)
 {
 	int i, j;
@@ -86,9 +92,8 @@ int getf2(complex<double> *a, int m, int n, int lda)
 
 	return 0;
 }
-//------------------------------------------------------------------------
-// Решение СЛАУ с нижнетреугольной матрицей, на диагонали 1
-//------------------------------------------------------------------------
+
+// Solving of SLAE with lower triangular matrix with 1 on diagonal
 void SolveL1(complex<double> *a, complex<double> *b, int n)
 {
 	int i;
@@ -100,9 +105,8 @@ void SolveL1(complex<double> *a, complex<double> *b, int n)
 		b[i] -= s;
 	}
 }
-//------------------------------------------------------------------------
-// Решение СЛАУ с верхнетреугольной матрицей
-//------------------------------------------------------------------------
+
+// Solving of SLAE with upper triangular matrix
 int SolveU(complex<double> *a, complex<double> *b, int n)
 {
 	int i,ret;
@@ -120,9 +124,8 @@ int SolveU(complex<double> *a, complex<double> *b, int n)
 	}
 	return ret;
 }
-//------------------------------------------------------------------------
-// LU-разложение
-//------------------------------------------------------------------------
+
+// Block LU-decomposition
 int getrf(complex<double> *a, int n,const int b,int blocksize,complex<double> *L,complex<double> *f,complex<double> *aa)
 {
 	int flag1 = 1;
@@ -167,7 +170,8 @@ int getrf(complex<double> *a, int n,const int b,int blocksize,complex<double> *L
 
 	return 0;
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void pre_MM(complex<double> *a, complex<double> *b, int n, int m, int lda)
 {
 	int i, j;
@@ -184,17 +188,10 @@ void pre_MM(complex<double> *a, complex<double> *b, int n, int m, int lda)
 		}
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void pre_trsm(complex<double> *a, complex<double> *L, complex<double> *b, int n, int lda, int m)
 {
-/*
-	Перезаписывает нижний треугольник подматрицы "L" матрицы "a" в отдельный
-	массив. Матрица "a" размера [lda]x[lda]. Матрица "L" размера [n]x[n]
-	начинается с элемента [m, m] матрицы "a".
-
-	Перезаписывает подматрицу a[m+n:lda][m:m+n] в массив "b", где элементы
-	хранятся в столбцовом порядке.
-*/
 	int i, j, k;
 	int adr;
 	int kol = lda - m - n;
@@ -219,7 +216,8 @@ void pre_trsm(complex<double> *a, complex<double> *L, complex<double> *b, int n,
 			b[j*n+i] = a[adr + j];
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void post_trsm(complex<double> *a, complex<double>*b, int n, int lda, int m)
 {
 	int i, j;
@@ -233,7 +231,8 @@ void post_trsm(complex<double> *a, complex<double>*b, int n, int lda, int m)
 			a[adr + j] = b[j*n+i];
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void trsm(complex<double> *L, complex<double> *b, int n, int m)
 {
 	int i, j, k;
@@ -256,7 +255,8 @@ void trsm(complex<double> *L, complex<double> *b, int n, int m)
 		}
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void MultMVblock(complex<double> *a, complex<double> *b, complex<double> *c, int n, int m, int lda)
 {
 	int nb = n/m;
@@ -295,7 +295,8 @@ void MultMVblock(complex<double> *a, complex<double> *b, complex<double> *c, int
 		}
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void MultMV(complex<double> *a, complex<double> *b, complex<double> *c, int n, int m, int lda)
 {
 	int i, j, k;
@@ -312,7 +313,8 @@ void MultMV(complex<double> *a, complex<double> *b, complex<double> *c, int n, i
 		}
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void MultMVvectorize(complex<double> *a, complex<double> *b, complex<double> *c, int n, int m, int lda)
 {
 	int i, j, k;
@@ -335,7 +337,8 @@ void MultMVvectorize(complex<double> *a, complex<double> *b, complex<double> *c,
 		}
 	}
 }
-//------------------------------------------------------------------------
+
+// Helper function for LU-decomposition
 void MultMVvectorizeBlock(complex<double> *a, complex<double> *b, complex<double> *c, int n, int m, int lda)
 {
 	int i, j, k;
@@ -382,11 +385,3 @@ void MultMVvectorizeBlock(complex<double> *a, complex<double> *b, complex<double
 		}
 	}
 }
-//------------------------------------------------------------------------
-
-
-
-
-
-
-

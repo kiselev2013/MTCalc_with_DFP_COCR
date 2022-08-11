@@ -1,3 +1,24 @@
+/**                                                                                         
+ * GENERAL REMARKS                                                                          
+ *                                                                                          
+ *  This code is freely available under the following conditions:                           
+ *                                                                                          
+ *  1) The code is to be used only for non-commercial purposes.                             
+ *  2) No changes and modifications to the code without prior permission of the developer.  
+ *  3) No forwarding the code to a third party without prior permission of the developer.   
+ *                                                                                          
+ *  			MTCalc_with_DFP_COCR                                                
+ *  This file contains implementation of the COCR solver with folded preconditioner and minimal residual smoothing               
+ *  The matix stored in the sparse format  
+ *                                                                                      
+ *  Written by Ph.D. Petr A. Domnikov                                                       
+ *  Novosibirsk State Technical University,                                                 
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                       
+ *  p_domnikov@mail.ru                                                                      
+ *  Version 1.3 April 7, 2021                                                               
+*/                                                                                          
+
+
 #include "stdafx.h"
 #include "pcocr.h"
 #include "pcocr_rci.h"
@@ -31,7 +52,7 @@ int PCOCR::PCOCR_2x2_Folded(int n, int *ig, int *jg, int *idi, int *ijg, double 
 	cout << "PCOCR_2x2_Folded...\n";
 	logfile << "PCOCR_2x2_Folded...\n";
 
-	__time64_t time_total, time_beg, time_end; // для засечки времени
+	__time64_t time_total, time_beg, time_end; 
 	__time64_t timestruct;
 
 	_time64(&timestruct);

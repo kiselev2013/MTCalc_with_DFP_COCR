@@ -1,3 +1,22 @@
+/**                                                                                                    
+ * GENERAL REMARKS                                                                                     
+ *                                                                                                     
+ *  This code is freely available under the following conditions:                                      
+ *                                                                                                     
+ *  1) The code is to be used only for non-commercial purposes.                                        
+ *  2) No changes and modifications to the code without prior permission of the developer.             
+ *  3) No forwarding the code to a third party without prior permission of the developer.              
+ *                                                                                                     
+ *  			MTCalc_with_DFP_COCR                                                           
+ *  This file contains the routine to solve the 1D MT problem in the layered medium by FEM          
+ *                                                                                                     
+ *  Written by Ph.D. Petr A. Domnikov                                                                  
+ *  Novosibirsk State Technical University,                                                            
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                  
+ *  p_domnikov@mail.ru                                                                                 
+ *  Version 1.3 November 23, 2020                                                                       
+*/                                                                                                     
+
 #include "stdafx.h"
 #include "divgrad_1d.h"
 #include "mesh_1d_mtz.h"
@@ -30,7 +49,6 @@ struct Point3D
 };
 double Spline(double x, long n, double *xyz, double *values)
 {
-	// n - число элементов
 	double s, xi;
 	long i, t, flag;
 
@@ -68,6 +86,7 @@ double Spline(double x, long n, double *xyz, double *values)
 
 	return s;
 }
+//-----------------------------------------------------------
 double dSpline(double x, long n, double *xyz, double *values)
 {
 	int i,fl[2];
@@ -118,6 +137,7 @@ double dSpline(double x, long n, double *xyz, double *values)
 		}
 	}
 }
+//-----------------------------------------------------------
 ofstream& operator<(ofstream& file, const double &id)
 {
 	file.write((char*)&id, sizeof(double));
@@ -138,7 +158,7 @@ int Divgrad_1d::Solve_1d_Problem_for_3d_task()
 
 	logfile<<1<<endl;
 
-	// генерируем одномерную сетку	
+	// generate a one-dimensional grid
 	m = new Mesh_1d_mtz();
 	if(m == 0)
 		Memory_allocation_error("m", "Divgrad_1d::Solve_1d_Problem_for_3d_task");
@@ -146,7 +166,7 @@ int Divgrad_1d::Solve_1d_Problem_for_3d_task()
 	m->Read_1d_data_for_3d_problem();
 	m->Gen_1d_mesh();
 
-	// портрет матрицы
+	// matrix portrait
 	p = new Portrait_profil(m->n_elem);
 	if(p == 0)
 		Memory_allocation_error("p", "Divgrad_1d::Solve_1d_Problem_for_3d_task");
@@ -155,7 +175,7 @@ int Divgrad_1d::Solve_1d_Problem_for_3d_task()
 
 	n = m->n_points*2;
 
-	// сборка СЛАУ
+	// SLAE assembly
 	a = new Global_slae_1d_harm_prof(n, m->n_elem, p->ig, m->nvkat, m->mu,
 		m->sigma, m->omega, m->coords, 0);
 	if(a == 0)
@@ -163,7 +183,7 @@ int Divgrad_1d::Solve_1d_Problem_for_3d_task()
 
 	a->Assembling_for_1d_harm_problem();
 
-	// решение СЛАУ
+	// solve SLAE
 	solution = new double[n];
 	s = new Solver_profil(n, p->ig, a->di, a->ggl, a->ggu, a->pr, solution); 
 	if(s == 0)
@@ -171,7 +191,7 @@ int Divgrad_1d::Solve_1d_Problem_for_3d_task()
 
 	s->Solve_SLAE_using_LU();
 
-	// запись результата
+	// writing the result
 	// usin.dat
 	if((fp=fopen("usin.dat", "w"))==0)
 		Cannot_open_file("usin.dat", "Divgrad_1d::Solve_1d_Problem_for_3d_task");

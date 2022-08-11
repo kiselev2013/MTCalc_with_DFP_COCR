@@ -1,58 +1,43 @@
+/**                                                                                            
+ * GENERAL REMARKS                                                                             
+ *                                                                                             
+ *  This code is freely available under the following conditions:                              
+ *                                                                                             
+ *  1) The code is to be used only for non-commercial purposes.                                
+ *  2) No changes and modifications to the code without prior permission of the developer.     
+ *  3) No forwarding the code to a third party without prior permission of the developer.      
+ *                                                                                             
+ *  			MTCalc_with_DFP_COCR                                                   
+ *  This file contains some basic routines for output of values of the desired function 
+ *  at an arbitrary point in the computational domain (3D spline)                                     
+ *                                                                                             
+ *  Written by Ph.D. Petr A. Domnikov                                                          
+ *  Novosibirsk State Technical University,                                                    
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                          
+ *  p_domnikov@mail.ru                                                                         
+ *  Version 1.3 January 10, 2021                                                               
+*/                                                                                             
+                                                                                               
 #pragma once
 #include <functional>
 #include "T_Mapping.h"
 #define OUTPUT
 //------------------------------------------------------------------------
-/*
-	Вариант выдачи напрямую без сплайнов и согласованных результантов должен
-	быть предусмотрен обязательно!!!!!!!!!!!!!!!!!!!
 
-//  [4/2/2008 Domnikov]
-	Вообщем, решено сделать следующее:
-
-	- в МТЗ (узловом) оставить всё как есть через 2d-spline
-		  - (однако,
-			мне кажется, что производные по x и по y точнее всего выдавать по 3-м точкам =>
-			в новой выдаче предусмотреть построение сплайнов по 1, 3(2 варианта), 9 точкам)
-		  - или лучше всего выдавать производные по x,y через согласованный интерполянт (2d),
-		    а потенциал - напрямую?????
-
-	- для выделения поля в МТЗ (узловом) - прямая выдача (с тетраэдров)
-
-	- в петле (ВМКЭ):
-		- когда приёмники расположены не на поверхности, выдавать Bz через 3-мерный сплайн
-			(предусматреть варианты выдачи через 1, 3 и 27 точек,
-			т.к. Bz на элементе зависит только от z)
-			- также я хочу сделать выдачу напрямую (но для Bz построить согласованный интерполянт)
-		- если приёмники расположены на поверхности - выдавать Bz через 2d-spline как обычно (1, 9 точек)
-
-	- в линии (ВМКЭ):
-		- в случае, если на поверхность не выходят аномалии - всё (Ex, Ey, Bz)
-			выдаётся как есть через 2d-spline;
-		- если на поверхности есть аномалии в форме параллелепипедов - разбить на подобласти
-		- если на поверхности есть аномалии в форме шестигранников - прямая выдача с треугольников
-
-	- в линии (узловой МКЭ)
-		- в случае, если на поверхность не выходят аномалии - всё (Ex, Ey, Bz)
-	выдаётся как есть через 2d-spline;
-		- если на поверхности есть аномалии в форме параллелепипедов - разбить на подобласти
-		- если на поверхности есть аномалии в форме шестигранников - прямая выдача с треугольников
-	     
-*/
 //------------------------------------------------------------------------
-// приёмник с координатами и номером приемника - для сортировки
+// receiver with coordinates and receiver number - for sorting
 //------------------------------------------------------------------------
 class PointRes2
 {
 public:
-	long num; // номер точки
-	double point[3]; // координаты точки
+	long num; // point number
+	double point[3]; // point coordinates
 
 	PointRes2()	{}
 	~PointRes2() {}
 };
 //------------------------------------------------------------------------
-// предикаты для сортировки приёмников
+// receiver sorting predicates
 //------------------------------------------------------------------------
 struct PointRes_less_x : public binary_function<PointRes2, PointRes2, bool>
 {
@@ -96,13 +81,13 @@ struct Long_double_num_less : public binary_function<long_double, long_double, b
 };
 
 //------------------------------------------------------------------------
-// Базовый класс для выдачи
+// Base class for output
 //------------------------------------------------------------------------
 struct Output3dArbitrary
 {
 	int withSpline3d;
 	int withSpline2d;
-	int zeroPlane; // выдача на плоскости z=0 через точки Гаусса на верхних гранях эл-тов
+	int zeroPlane; //output on the plane z=0 through the Gauss points on the upper faces of the elements
 	long kpar;
 	long kuzlov;
 	long n_pointres;
@@ -111,10 +96,10 @@ struct Output3dArbitrary
 
 	long (*nver)[14];
 	long (*nvtr)[8];
-	long *type_of_hex; // 0..30 - параллелепипед, 31..61 - шестигранник
+	long *type_of_hex; // 0..30 - parallelepiped, 31..61 - hexahedron
 
-	vector<long> elemForPoint; // для каждого приёмника хранит эл-т, куда он попадает
-	vector< vector<long> > PointresForElem; // для каждого эл-та хранит номера приёмников, к-рые в него попадают
+	vector<long> elemForPoint; // for each receiver stores the element where it will fall
+	vector< vector<long> > PointresForElem; // for each element stores the numbers of receivers that fall into it
 	vector<long_double> PointresXsorted;
 	vector<long_double> PointresYsorted;
 	vector<long_double> PointresZsorted;
@@ -129,12 +114,12 @@ struct Output3dArbitrary
 	long GetGlobalVertex(long nElem, long nLocVertex);
 	long GetTypeOfElement(long nElem);
 
-	// возвращает номер тетраэдра, в который попадает  точка или -1, если не попадает
+	// returns the number of the tetrahedron the point hits, or -1 if it doesn't
 	int IsPointInsideHexahedron(double xm, double ym, double zm, double *x, double *y, double *z);
 
 	int IsPointInsideBrick(double xm, double ym, double zm, double *x0, double *x1);
 
-	// дифференцирование решения по времени (по 3-слойной схеме) в точке t из [t_j2, t_j]
+	// differentiation of the solution with respect to time (according to the 3-layer scheme) at the point t from [t_j2, t_j]
 	double dA_dt(double t,
 		double u_j, double u_j1, double u_j2, 
 		double dt, double dt0, double dt1, 
@@ -142,14 +127,14 @@ struct Output3dArbitrary
 };
 
 //------------------------------------------------------------------------
-// выдача с векторных элементов
+// output from vector elements
 //------------------------------------------------------------------------
 struct OutputVect3d : public Output3dArbitrary
 {
 	long n_edges;
 	long (*ed)[25];
 
-	// конструктор для векторной задачи
+	// constructor for vector task
 	OutputVect3d(int withSpline3d, int withSpline2d, int zeroPlane,
 		long kuzlov, long kpar, long n_edges, long n_pointres,
 		double (*pointres)[3], double (*xyz)[3], long (*nver)[14], long (*ed)[25]);
@@ -158,13 +143,13 @@ struct OutputVect3d : public Output3dArbitrary
 
 	int OutputFieldAtReceivers(double *v3, double *result, int derive);
 
-	// выдать значения из сетки в точках и продифференцировать по 3-слойной схеме
+	// output values from the grid in points and differentiate according to the 3-layer scheme
 	int OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j, double t,
 		double t_j2, double t_j1, double t_j, int derive, double *result);
 };
 
 //------------------------------------------------------------------------
-// выдача с узловых элементов
+// output from node elements
 //------------------------------------------------------------------------
 struct OutputNode3d : public Output3dArbitrary
 {

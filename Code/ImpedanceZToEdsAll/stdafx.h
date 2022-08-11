@@ -1,3 +1,7 @@
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// Header file for including standart libraries
+
 #pragma once
 
 #include <stdio.h>

@@ -1,3 +1,23 @@
+
+/**                                                                                         
+ * GENERAL REMARKS                                                                          
+ *                                                                                          
+ *  This code is freely available under the following conditions:                           
+ *                                                                                          
+ *  1) The code is to be used only for non-commercial purposes.                             
+ *  2) No changes and modifications to the code without prior permission of the developer.  
+ *  3) No forwarding the code to a third party without prior permission of the developer.   
+ *                                                                                          
+ *  			MTCalc_with_DFP_COCR                                                
+ *  This file contains some basic routines for vector-matrix operations and error messages    
+ *                                                                                          
+ *  Written by Ph.D. Petr A. Domnikov                                                       
+ *  Novosibirsk State Technical University,                                                 
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                       
+ *  p_domnikov@mail.ru                                                                      
+ *  Version 1.2 April 7, 2021                                                               
+*/                                                                                          
+
 #include "stdafx.h"
 #ifdef GEOPREP_MPI
 #include "..\Parallel\ClusterMPI.h"
@@ -7,7 +27,7 @@
 #endif
 extern ofstream logfile;
 //------------------------------------------------------------------------
-// сообщает об ошибке выделения памяти
+// reports a memory allocation error
 //------------------------------------------------------------------------
 void Memory_allocation_error(const char *var, const char *func)
 {
@@ -20,7 +40,7 @@ void Memory_allocation_error(const char *var, const char *func)
 	throw logic_error(str);
 }
 //------------------------------------------------------------------------
-// сообщает об ошибке открытия файла и генерирует исключение
+// reports a file open error and throws an exception
 //------------------------------------------------------------------------
 void Cannot_open_file(const char *fname, const char *func)
 {
@@ -43,7 +63,7 @@ void Cannot_open_file(const char *fname, const char *func)
 	throw logic_error(str);
 }
 //------------------------------------------------------------------------
-// сообщает об ошибке открытия файла, но работа программы продолжается
+// reports an error opening the file, but the program continues    
 //------------------------------------------------------------------------
 void Cannot_open_file_but_continue(const char *fname, const char *func)
 {
@@ -54,7 +74,7 @@ void Cannot_open_file_but_continue(const char *fname, const char *func)
 	cerr    << str << flush;
 }
 //------------------------------------------------------------------------
-// для выделения sin-, cos-компонент из нестационарной задачи в одной точке
+// Dot product
 //------------------------------------------------------------------------
 double Scal(double *a, double *b, int n)
 {
@@ -83,7 +103,9 @@ void Mult_Plot_AV(double *a, double *x, double *y, int n, int m)
 	}
 }
 //------------------------------------------------------------
-double Projection_On_Axis(double *v,double *o) //Проекция вектора v на ось o
+// Projection of the vector v onto the o axis
+//------------------------------------------------------------
+double Projection_On_Axis(double *v,double *o) 
 {
 	double value;
 
@@ -91,6 +113,8 @@ double Projection_On_Axis(double *v,double *o) //Проекция вектора v на ось o
 
 	return value;
 }
+//------------------------------------------------------------
+// Matrix-vector multiplication in dense format
 //------------------------------------------------------------
 void Mult_Plot(double *a, double *x, double *y, int n)
 {
@@ -108,6 +132,8 @@ void Mult_Plot(double *a, double *x, double *y, int n)
 	}
 }
 //------------------------------------------------------------
+// Euclidian norm of a vector
+//------------------------------------------------------------
 double Norm_Euclid(double *a, int n)
 {
 	double value;
@@ -116,6 +142,8 @@ double Norm_Euclid(double *a, int n)
 
 	return value;	
 }
+//------------------------------------------------------------
+// Max norm of a vector
 //------------------------------------------------------------
 double Norm_Max(double *a, int n)
 {
@@ -134,7 +162,7 @@ double Norm_Max(double *a, int n)
 	return max;
 }
 //-------------------------------------------------------------
-//---------       умножение матрицы на вектор        ----------
+// Matrix-vector multiplication in sparse format
 //-------------------------------------------------------------
 void Mult_MV(int *ig, int *jg, double *ggl, double *ggu, double *di, double *x, double *y, int n)
 {
@@ -151,6 +179,8 @@ void Mult_MV(int *ig, int *jg, double *ggl, double *ggu, double *di, double *x, 
 		}
 	}
 }
+//-----------------------------------------------------------
+// Relative error
 //-----------------------------------------------------------
 double Relative_Error(double *analytic, double *numeric, int n)
 {
@@ -180,17 +210,23 @@ double Relative_Error(double *analytic, double *numeric, int n)
 	return error;
 }
 //-----------------------------------------------------------
+// Maximum of 2 numbers
+//-----------------------------------------------------------
 int Max_Long(int a, int b)
 {
 	if(a > b) return a;
 	return b;
 }
 //-----------------------------------------------------------
+// Minimum of 2 numbers
+//-----------------------------------------------------------
 int Min_Long(int a, int b)
 {
 	if(a < b) return a;
 	return b;
 }
+//-----------------------------------------------------------
+// Sort 2 numbers
 //-----------------------------------------------------------
 void Sort2(int *a, int *b)
 {
@@ -203,6 +239,8 @@ void Sort2(int *a, int *b)
 	}
 }
 //-----------------------------------------------------------
+// Distance between two 3D-points
+//-----------------------------------------------------------
 double Interval(double *x, double *y)
 {
 	double r;
@@ -212,11 +250,13 @@ double Interval(double *x, double *y)
 	return r;
 }
 //-----------------------------------------------------------
+// Distance between two parallel lines in 3D
+//-----------------------------------------------------------
 double Interval_Parallel_Lines(double *a0, double *a1, double *b0, double *b1)
 {
-	double ax, ay, az; // направляющий вектор для 1-й прямой
-	double x1, y1, z1; // точка на первой прямой
-	double x0, y0, z0; // точка на второй прямой
+	double ax, ay, az; // direction vector for the 1st line
+	double x1, y1, z1; // point on the first line
+	double x0, y0, z0; // point on the second line
 	double det1, det2, det3;
 	double answer;
 
@@ -241,9 +281,10 @@ double Interval_Parallel_Lines(double *a0, double *a1, double *b0, double *b1)
 	return answer;
 }
 //-----------------------------------------------------------
+// Linear interpolation
+//-----------------------------------------------------------
 double Spline(double x, int n, double *xyz, double *values)
 {
-	// n - число элементов
 	double s, xi;
 	int i, t, flag;
 

@@ -1,6 +1,25 @@
+/**                                                                                                     
+ * GENERAL REMARKS                                                                                      
+ *                                                                                                      
+ *  This code is freely available under the following conditions:                                       
+ *                                                                                                      
+ *  1) The code is to be used only for non-commercial purposes.                                         
+ *  2) No changes and modifications to the code without prior permission of the developer.              
+ *  3) No forwarding the code to a third party without prior permission of the developer.               
+ *                                                                                                      
+ *  			MTCalc_with_DFP_COCR                                                            
+ *  This file contains a structures of finite element mesh storing                                      
+ *                                                                                                      
+ *  Written by Ph.D. Petr A. Domnikov                                                                   
+ *  Novosibirsk State Technical University,                                                             
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                   
+ *  p_domnikov@mail.ru                                                                                  
+ *  Version 2.1 December 17, 2020                                                                       
+*/                                                                                                      
+                                                                                                  
+
 #include "stdafx.h" 
 #include "vec_prep_data.h"
-
 extern ofstream logfile;
 //-----------------------------------------------------------------------------
 Vec_Prep_Data::Vec_Prep_Data()
@@ -31,7 +50,7 @@ Vec_Prep_Data::~Vec_Prep_Data()
 	if(dpr0) {delete [] dpr0; dpr0=NULL;}
 }
 //-----------------------------------------------------------------------------
-// чтение сетки для МТЗ на векторных
+// reading the grid for VFEM MT
 //-----------------------------------------------------------------------------
 int Vec_Prep_Data::Read_prep_data()
 {
@@ -44,7 +63,7 @@ int Vec_Prep_Data::Read_prep_data()
 
 	ifstream inf;
 
-	// n_materials (максимальный номер материала в файле sig3d)
+	
 	if((fp=fopen("sig3d", "r"))==0)
 		Cannot_open_file("sig3d", "Vec_Prep_Data::Read_prep_data");
 
@@ -58,7 +77,6 @@ int Vec_Prep_Data::Read_prep_data()
 	n_materials = max_material;
 	fclose(fp);
 
-	// mu3d (mu3d, mu0)
 	mu3d = new double[n_materials];
 	if(mu3d == 0)
 		Memory_allocation_error("mu3d", "Vec_Prep_Data::Read_prep_data");
@@ -70,7 +88,6 @@ int Vec_Prep_Data::Read_prep_data()
 	if((fp=fopen("mu3d", "r"))==0)
 		Cannot_open_file("mu3d", "Vec_Prep_Data::Read_prep_data");
 
-	//while(!feof(fp))
 	for (i=0; i<n_materials; i++)
 	{
 		int n_of_current_material;
@@ -83,7 +100,6 @@ int Vec_Prep_Data::Read_prep_data()
 	}
 	fclose(fp);
 
-	// sig3d (sigma3d, sigma0)
 	sigma3d = new double[n_materials];
 	if(sigma3d == 0)
 		Memory_allocation_error("sigma3d", "Vec_Prep_Data::Read_prep_data");

@@ -1,3 +1,22 @@
+/**                                                                                           
+ * GENERAL REMARKS                                                                            
+ *                                                                                            
+ *  This code is freely available under the following conditions:                             
+ *                                                                                            
+ *  1) The code is to be used only for non-commercial purposes.                               
+ *  2) No changes and modifications to the code without prior permission of the developer.    
+ *  3) No forwarding the code to a third party without prior permission of the developer.     
+ *                                                                                            
+ *  			MTCalc_with_DFP_COCR                                                  
+ *  Building a spline on the ground surface to output the value of the required function at an arbitrary point (receiver position)                                                                
+ *                                                                                                                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                         
+ *  Novosibirsk State Technical University,                                                   
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                         
+ *  p_domnikov@mail.ru                                                                        
+ *  Version 1.2 March 10, 2021                                                                
+*/                                                                                            
+
 #pragma once
 #include "AbstractFEM.h"
 #include "OutputResultant3d.h"
@@ -9,21 +28,21 @@ public:
 
 	T_Mapping_Vec *tmap;
 
-	double *v3dat; // решение
+	double *v3dat; // solution
 
 
 	OutputResultant3d *resultantA,*resultantB;
 
 	
-	// нормальное поле 
+	// normal field 
 	std::complex <double> (*H_1d)[2];
 	std::complex <double> (*E_1d)[2];
-	// аномальное поле в каждом из приёмников
+	// anomalous field in each of the receivers
 	std::complex <double> (*H)[3];
 	std::complex <double> (*E)[3];
-	// модуль импеданса в каждом из приёмников
+	// impedance module in each of the receivers
 	double *impedance;
-	// кажущееся сопротивление в каждом из приёмников
+	// apparent resistivity in each of the receivers
 	double *rho;
 
 

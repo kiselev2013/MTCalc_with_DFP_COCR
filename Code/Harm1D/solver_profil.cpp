@@ -1,3 +1,23 @@
+/**                                                                                          
+ * GENERAL REMARKS                                                                           
+ *                                                                                           
+ *  This code is freely available under the following conditions:                            
+ *                                                                                           
+ *  1) The code is to be used only for non-commercial purposes.                              
+ *  2) No changes and modifications to the code without prior permission of the developer.   
+ *  3) No forwarding the code to a third party without prior permission of the developer.    
+ *                                                                                           
+ *  			MTCalc_with_DFP_COCR                                                 
+ *    Solving the SLAE in 1D MT by direct methods                                  
+ *                                                                                           
+ *  Written by Ph.D. Petr A. Domnikov                                                        
+ *  Novosibirsk State Technical University,                                                  
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                        
+ *  p_domnikov@mail.ru                                                                       
+ *  Version 1.2 December 5, 2020                                                             
+*/                                                                                           
+
+
 #include "stdafx.h"
 #include "solver_profil.h"
 //-----------------------------------------------------------
@@ -36,8 +56,8 @@ int Solver_profil::LU_profil()
 	return this->LU_profil(n, ig, di, ggl, ggu, ggl, ggu, di);
 }
 //-----------------------------------------------------------------
-//---- Решение СЛАУ (т.е. LU-разложение, а затем решение СЛАУ с ---
-//---- треугольными матрицами L и U)                            ---
+//---- SLAE solution (i.e. LU decomposition and then SLAE solution with ---
+//---- triangular matrices L and U) ---
 //-----------------------------------------------------------------
 int Solver_profil::Solve_SLAE_using_LU()
 {
@@ -117,7 +137,7 @@ int Solver_profil::Solve_SLAE_using_LLT(long n, long *ig, double *di, double *gg
 	return 0;
 }
 //-----------------------------------------------------------
-//------------ Скалярное произведение  ----------------------
+//------------ dot product  ----------------------
 //-----------------------------------------------------------
 double Solver_profil::Scal(double *x, double *y, long n)
 {
@@ -129,18 +149,16 @@ double Solver_profil::Scal(double *x, double *y, long n)
 	return sum;
 }
 //-------------------------------------------------------------
-//------   LU-разложение матрицы в профильном формате ---------
+//------   LU decomposition of a matrix in the skyline format
 //-------------------------------------------------------------
 int Solver_profil::LU_profil(long n, long *ig, double *di, double *ggl ,double *ggu, double *sl, double *su, double *d)
 {
-// единички стоят на диагонали у матрицы L
 	long i, j, m;
-	long razn; // разность между числом ненулевых эл-тов в i-й строке (перед текущим
-	// элнментом) и j-м столбце (всего)
-	long nonzero_i; //число ненулевых эл-тов в i-й строке (перед текущим эл-том)
-	long n_elem_str_i, n_elem_str_j; // число эл-тов в текущей строке
-	long str_beg_i, str_beg_j; // адрес первого эл-та в текущей строке
-	long str_end_i, str_end_j; // адрес последнего эл-та в текущей строке
+	long razn; 
+	long nonzero_i; 
+	long n_elem_str_i, n_elem_str_j; 
+	long str_beg_i, str_beg_j; 
+	long str_end_i, str_end_j; 
 
 	printf("Direct LU factorization... ");
 
@@ -152,7 +170,7 @@ int Solver_profil::LU_profil(long n, long *ig, double *di, double *ggl ,double *
 
 		for(m=str_beg_i; m<=str_end_i; m++)
 		{
-			j = i - n_elem_str_i + (m-str_beg_i); // j - номер текущего столбца
+			j = i - n_elem_str_i + (m-str_beg_i);
 			str_beg_j = ig[j];
 			str_end_j = ig[j+1]-1;
 			n_elem_str_j = str_end_j - str_beg_j + 1;
@@ -167,25 +185,20 @@ int Solver_profil::LU_profil(long n, long *ig, double *di, double *ggl ,double *
 				return 1;
 			}
 
-			if(razn >= 0)//в i-й строке больше (или ==) ненулевых элементов, чем в j-м столбце
+			if(razn >= 0)
 			{
-				// элемент матрицы U
 				su[m] = ggu[m] - Scal(&sl[str_beg_j], &su[str_beg_i+razn], n_elem_str_j);	
 
-				// элемент матрицы L
 				sl[m] = (ggl[m] - Scal(&sl[str_beg_i+razn], &su[str_beg_j], n_elem_str_j))/d[j];
 			}
-			else // в i-й строке меньше ненулевых элементов, чем в j-м столбце 
+			else 
 			{
-				// элемент матрицы U
 				su[m] = ggu[m] - Scal(&sl[str_beg_j-razn], &su[str_beg_i], nonzero_i);	
 
-				// элемент матрицы L
 				sl[m] = (ggl[m] - Scal(&sl[str_beg_i], &su[str_beg_j-razn], nonzero_i))/d[j];
 			}
 		}
 
-		// диагональный элемент
 		d[i] = (di[i] - Scal(&sl[str_beg_i], &su[str_beg_i], n_elem_str_i));
 	}
 
@@ -193,7 +206,7 @@ int Solver_profil::LU_profil(long n, long *ig, double *di, double *ggl ,double *
 	return 0;
 }
 //---------------------------------------------------------------
-//-- решение СЛАУ с нижнетреугольной матрицей (1 на диагонали) --
+//-- SLAE solution with a lower triangular matrix (1 on the diagonal)
 //---------------------------------------------------------------
 void Solver_profil::Solve_L_1(long n, long *ig, double *ggl, double *pr, double *y)
 {
@@ -211,14 +224,14 @@ void Solver_profil::Solve_L_1(long n, long *ig, double *ggl, double *pr, double 
 	}
 }
 //-----------------------------------------------
-//-- решение СЛАУ с верхнетреугольной матрицей --
+//--SLAE solution with upper triangular matrix --
 //-----------------------------------------------
 int Solver_profil::Solve_U(long n, long *ig, double *di, double *ggu,
 						   double *y, double *x, double *h)
 {
 	long i, j, k;
 
-	for(i=0; i<n; i++) // вспомогательный вектор
+	for(i=0; i<n; i++) 
 		h[i] = 0.0;
 
 	for(i=n-1; i>=0; i--)
@@ -232,25 +245,23 @@ int Solver_profil::Solve_U(long n, long *ig, double *di, double *ggu,
 		x[i] = (y[i] - h[i])/di[i];
 		for(j=ig[i]; j<=ig[i+1]-1; j++)
 		{
-			k = i - ig[i+1] + j; //???????????????
+			k = i - ig[i+1] + j; 
 			h[k] += ggu[j]*x[i];
 		}
 	}
 	return 0;
 }
-//-------------------------------------------------------------
 //---------------------------------------------------------------
-//---------------  Разложение Холесского  -----------------------
+//---------------  Cholesky decomposition  -----------------------
 //---------------------------------------------------------------
 int Solver_profil::LLT_profil(long n, long *ig, double *di, double *gg, double *sl, double *d)
 {
 	long i, j, m;
-	long str_beg_i, str_beg_j;       // адрес первого эл-та в текущей строке
-	long str_end_i, str_end_j;       // адрес последнего эл-та в текущей строке
-	long n_elem_str_i, n_elem_str_j; // число эл-тов в текущей строке
-	long nonzero_i; //число ненулевых эл-тов в i-й строке (перед текущим эл-том)
-	long razn; // разность между числом ненулевых эл-тов в i-й строке (перед текущим
-	// элнментом) и j-м столбце (всего)
+	long str_beg_i, str_beg_j;       
+	long str_end_i, str_end_j;       
+	long n_elem_str_i, n_elem_str_j; 
+	long nonzero_i; 
+	long razn; 
 	double s;
 
 	printf("Direct LLT factorization... ");
@@ -261,7 +272,7 @@ int Solver_profil::LLT_profil(long n, long *ig, double *di, double *gg, double *
 		str_end_i = ig[i+1]-1;
 		n_elem_str_i = str_end_i - str_beg_i + 1;
 
-		j = i - n_elem_str_i; // j - номер текущего столбца
+		j = i - n_elem_str_i; 
 		for(m=str_beg_i; m<=str_end_i; m++)
 		{	
 			str_beg_j = ig[j];
@@ -278,11 +289,11 @@ int Solver_profil::LLT_profil(long n, long *ig, double *di, double *gg, double *
 
 			razn = nonzero_i - n_elem_str_j;
 
-			if(razn >= 0)//в i-й строке больше (или ==) ненулевых элементов, чем в j-м столбце
+			if(razn >= 0)
 			{
 				sl[m] = (gg[m] - Scal(&sl[str_beg_i+razn], &sl[str_beg_j], n_elem_str_j))/d[j];
 			}
-			else // в i-й строке меньше ненулевых элементов, чем в j-м столбце 
+			else 
 			{
 				sl[m] = (gg[m] - Scal(&sl[str_beg_i], &sl[str_beg_j-razn], nonzero_i))/d[j];
 			}
@@ -305,7 +316,7 @@ int Solver_profil::LLT_profil(long n, long *ig, double *di, double *gg, double *
 	return 0;
 }
 //---------------------------------------------------------------
-//-- решение СЛАУ с нижнетреугольной матрицей -------------------
+//-- SLAE solution with a lower triangular matrix -------------------
 //---------------------------------------------------------------
 int Solver_profil::Solve_L(long n, long *ig, double *di, double *ggl, double *pr, double *x)
 {

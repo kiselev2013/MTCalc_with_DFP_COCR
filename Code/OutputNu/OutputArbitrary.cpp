@@ -1,3 +1,23 @@
+/**                                                                                       
+ * GENERAL REMARKS                                                                        
+ *                                                                                        
+ *  This code is freely available under the following conditions:                         
+ *                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                           
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer. 
+ *                                                                                        
+ *  			MTCalc_with_DFP_COCR                                              
+ *  This file contains some basic routines for output of values of the desired function   
+ *  at an arbitrary point in the computational domain (3D spline)                         
+ *                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                     
+ *  Novosibirsk State Technical University,                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                     
+ *  p_domnikov@mail.ru                                                                    
+ *  Version 1.3 January 10, 2021                                                          
+*/                                                                                        
+
 #include "stdafx.h"
 #include "T_Brick.h"
 #include "OutputArbitrary.h"
@@ -27,7 +47,7 @@ Output3dArbitrary::~Output3dArbitrary()
 {
 }
 //---------------------------------------------------------------------------------------
-// дифференцирование решения по времени (по 3-слойной схеме) в точке t из [t_j2, t_j]
+// differentiation of the solution with respect to time (according to the 3-layer scheme) at the point t from [t_j2, t_j]
 //---------------------------------------------------------------------------------------
 double Output3dArbitrary::dA_dt(double t, double u_j, double u_j1, double u_j2,
 								double dt, double dt0, double dt1, double t_j, double t_j1, double t_j2)
@@ -44,7 +64,7 @@ double Output3dArbitrary::dA_dt(double t, double u_j, double u_j1, double u_j2,
 	return du_dt;
 }
 //------------------------------------------------------------------------
-// конструктор для векторной задачи
+// constructor for vector problem
 //------------------------------------------------------------------------
 OutputVect3d::OutputVect3d(int withSpline3d, int withSpline2d, int zeroPlane, long kuzlov, long kpar, long n_edges,
 						   long n_pointres, double (*pointres)[3], double (*xyz)[3], long (*nver)[14],
@@ -62,7 +82,7 @@ OutputVect3d::~OutputVect3d()
 {
 }
 //------------------------------------------------------------------------
-// конструктор для узловой задачи
+// constructor for node problem
 //------------------------------------------------------------------------
 OutputNode3d::OutputNode3d(int withSpline3d, int withSpline2d, int zeroPlane,
 						   long kuzlov, long kpar, long n_pointres, double (*pointres)[3],
@@ -79,8 +99,8 @@ OutputNode3d::~OutputNode3d()
 {
 }
 //------------------------------------------------------------------------
-// выдать значения из сетки в точках и продифференцировать по 3-слойной схеме
-// Для выдачи E=-dA/at и Eds=-dBz/dt
+// output values from the grid in points and differentiate according to the 3-layer scheme
+// for output of E=-dA/at and Eds=-dBz/dt
 //------------------------------------------------------------------------
 int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j, double t,
 						double t_j2, double t_j1, double t_j, int derive, double *result)
@@ -93,9 +113,9 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 	long sz;
 	long nElem;
 	long typeOfElem;
-	double x[8], y[8], z[8]; // координаты текущего шестигранника, с к-рого выдаём рез-тат
-	double tx, ty, tz; // координаты текущего приемника
-	double ves_j[12], ves_j1[12], ves_j2[12]; // веса для ребер текущго шестигранника на трёх временных слоях
+	double x[8], y[8], z[8]; // coordinates of the current hexahedron, from which we output the result
+	double tx, ty, tz; // current receiver coordinates
+	double ves_j[12], ves_j1[12], ves_j2[12]; // weights for the edges of the current hexahedron on three time layers
 	double val_j2, val_j1, val_j;
 
 	if(withSpline3d)
@@ -116,15 +136,15 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 		{
 			for (nElem=0; nElem<kpar; nElem++)
 			{
-				sz = (long)PointresForElem[nElem].size(); // число приёмников, попавших в эл-т
+				sz = (long)PointresForElem[nElem].size(); // the number of receivers that are in this element
 				if(sz == 0)
 					continue;
 
 				typeOfElem = GetTypeOfElement(nElem);
 
-				if (typeOfElem <= 30) // параллелепипед
+				if (typeOfElem <= 30) // parallelepiped
 				{
-					// инициализация объекта класса T_Brick
+					// initialization of an object of class T_Brick
 					for (i=0; i<8; i++)
 					{
 						j = GetGlobalVertex(nElem, i);
@@ -134,7 +154,7 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 					}
 					T_Brick L(x, y, z, typeOfElem);
 
-					// определяем веса для баз. функций
+					// determine the weights for the basis functions
 					for (i=0; i<12; i++)
 					{
 						ves_j2[i] = v3_j2[ed[nElem][i]];
@@ -142,7 +162,7 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 						ves_j[i]  = v3_j[ed[nElem][i]];
 					}
 
-					// для каждой точки, попавшей в эл-т, выдаём с параллелепипеда требуемую величину
+					// for each point that falls into the element, it outputs the required value from the parallelepiped 
 					for (i=0; i<sz; i++)
 					{
 						j = PointresForElem[nElem][i];
@@ -150,7 +170,7 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 						ty = pointres[j][1];
 						tz = pointres[j][2];
 
-						// выдаём значения на трёх временных слоях
+						// output values on three time layers
 						switch(derive)
 						{
 						case 0: // Ex = -dAx/dt
@@ -164,11 +184,11 @@ int OutputVect3d::OutputDtAtReceivers(double *v3_j2, double *v3_j1, double *v3_j
 							break;
 						}
 						
-						// собственно, дифференцируем по времени
+						// differentiate with respect to time
 						result[j] = -dA_dt(t, val_j, val_j1, val_j2, dt, dt0, dt1, t_j, t_j1, t_j2);
 					}
 				} 
-				else // шестигранник
+				else // hexahedron
 				{
 				}
 			}				
@@ -209,15 +229,15 @@ int OutputVect3d::OutputFieldAtReceivers(double *v3, double *result, int derive)
 		{
 			for (nElem=0; nElem<kpar; nElem++)
 			{
-				sz = (long)PointresForElem[nElem].size(); // число приёмников, попавших в эл-т
+				sz = (long)PointresForElem[nElem].size(); // the number of receivers that are in the element
 				if(sz == 0)
 					continue;
 
 				typeOfElem = GetTypeOfElement(nElem);
 
-				if (typeOfElem <= 30) // параллелепипед
+				if (typeOfElem <= 30) // parallelepiped
 				{
-				// инициализация объекта класса T_Brick
+				//initialization of an object of class T_Brick
 				for (i=0; i<8; i++)
 				{
 					t = GetGlobalVertex(nElem, i);
@@ -227,11 +247,11 @@ int OutputVect3d::OutputFieldAtReceivers(double *v3, double *result, int derive)
 				}
 				T_Brick L(x, y, z, typeOfElem);
 
-				// определяем веса для баз. функций
+				// determine the weights for the basis functions
 				for (i=0; i<12; i++)
 					ves[i] = v3[ed[nElem][i]];
 
-				// для каждой точки, попавшей в эл-т, выдаём с параллелепипеда требуемую величину
+				// for each point that fell into the element, we give the required value from the parallelepiped
 				for (i=0; i<sz; i++)
 				{
 					t = PointresForElem[nElem][i];
@@ -262,7 +282,7 @@ int OutputVect3d::OutputFieldAtReceivers(double *v3, double *result, int derive)
 						}
 					}
 				} 
-					else // шестигранник
+					else // hexahedron
 					{
 						}
 						}
@@ -370,11 +390,10 @@ int Output3dArbitrary::FindElemForReceivers()
 	long i, j, sz, t;
 	long typeOfHex;
 
-	// границы массивов с приёмниками, к-рые попадают (по x,y,z соответственно)
-	// в параллелепипед, очерченный вокруг эл-та
+	// boundaries of arrays with receivers, which fall (by x, y, z, respectively) into a parallelepiped outlined around the element
 	vector<long_double>::iterator beg_x, beg_y, beg_z, end_x, end_y, end_z; 
 
-	// координаты макс/мин вершины эл-та по x,y,z
+	// max / min coordinates of the vertex of the element by x,y,z
 	long_double coordMin[3], coordMax[3]; 
 
 	vector<long_double> pntInBrick, pntInBrickTmp;
@@ -387,12 +406,12 @@ int Output3dArbitrary::FindElemForReceivers()
 	for(i=0; i<n_pointres; i++)
 		elemForPoint[i] = -1;
 
-	// для каждого эл-та находим все приёмники, к-рые в него попадают
+	// for each element we find all the receivers that fall into it
 	for(i=0; i<kpar; i++)
 	{
 		typeOfHex = GetTypeOfElement(i);
 
-		if(typeOfHex <= 30) // параллелепипед
+		if(typeOfHex <= 30) // parallelepiped
 		{
 			for (j=0; j<3; j++)
 			{
@@ -426,7 +445,7 @@ int Output3dArbitrary::FindElemForReceivers()
 			if(end_z == PointresZsorted.begin())
 				continue;
 
-			// не перехлестнулись ли beg и end
+			// did not overlap beg and end
 			if(distance(beg_x, end_x) <= 0)
 				continue;
 
@@ -436,8 +455,8 @@ int Output3dArbitrary::FindElemForReceivers()
 			if(distance(beg_z, end_z) <= 0)
 				continue;
 
-			// сейчас точки отсортированы по координатам
-			// то что находится между beg_? и end_? необходимо отсортировать по номерам приёмников 
+			
+			 
 			tmp_x.clear();
 			copy(beg_x, end_x, back_inserter(tmp_x));
 			sort(tmp_x.begin(), tmp_x.end(), Long_double_num_less());
@@ -470,7 +489,7 @@ int Output3dArbitrary::FindElemForReceivers()
 		}
 	}
 
-	// проверка есть ли приёмники, к-рые не попали ни в один эл-т
+	// checking if there are receivers that did not hit any element
 	for (i=0; i<n_pointres; i++)
 		{
 		if (elemForPoint[i]==-1)

@@ -1,3 +1,7 @@
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// Header file for open_close.cpp
+
 #pragma once
 
 int OpenInputFile(ifstream &inf,char *fname,ios_base::open_mode mode=ios_base::in);

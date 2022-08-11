@@ -1,10 +1,30 @@
+/**                                                                                                        
+ * GENERAL REMARKS                                                                                         
+ *                                                                                                         
+ *  This code is freely available under the following conditions:                                          
+ *                                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                                            
+ *  2) No changes and modifications to the code without prior permission of the developer.                 
+ *  3) No forwarding the code to a third party without prior permission of the developer.                  
+ *                                                                                                         
+ *  			MTCalc_with_DFP_COCR                                                               
+ *  This file contains implementation of the class for transition matrix used to store a nonconforming mesh
+ *                                                                                                         
+ *                                                                                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                                      
+ *  Novosibirsk State Technical University,                                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                      
+ *  p_domnikov@mail.ru                                                                                     
+ *  Version 2.1 March 17, 2021                                                                             
+*/                                                                                                         
+
+
 #pragma once
 
 //-------------------------------------------------------------------------
-/*	Структура long_double требуется при построении T-матрицы.
-В ней хранится номер базисной функции и значение, с которым она берётся.
-Удобно хранить эти два числа вместе.
-*/
+// The long_double structure is required when constructing the T-matrix.
+// It stores the number of the basic function and the value with which it is taken.
+// It is convenient to store these two numbers together.
 //-------------------------------------------------------------------------
 struct long_double
 {
@@ -12,8 +32,7 @@ struct long_double
 	double d;
 };
 //-------------------------------------------------------------------------
-// Бинарное дерево используется для хранения "цепочек" номеров базисных функций
-// при построении T-матрицы
+// A binary tree is used to store "chains" of numbers of basis functions when constructing a T-matrix 
 //-------------------------------------------------------------------------
 class Btree
 {
@@ -33,11 +52,9 @@ public:
 	Btree * visit(std::vector<long_double> *s_t, Btree *t, long j);
 };
 //--------------------------------------------------------------------------------------------------------------
-// Класс T_Mapping_Vec служит для построения Т-матрицы для векторных (edge-elements)
-// шестигранников и нумерации рёбер в узловой сетке.
-//
-// Здесь используются векторные базисные функции с тангенциальными составляющими 2/hx, 2/hy, 2/hz вдоль рёбер,
-// поэтому сумма по столбцу в T-матрице вообще не равна 1, и проводить такую проверку бессмысленно.
+// The T_Mapping_Vec class is used to construct a T-matrix for vector (edge-elements) hexagons and numbering edges in a nodal grid.                                                                                                           
+// Here we use vector basis functions with tangential components 2/hx, 2/hy, 2/hz along the edges,
+// therefore, the sum over the column in the T-matrix is not equal to 1, and such a check is meaningless. 
 //--------------------------------------------------------------------------------------------------------------
 class T_Mapping_Vec
 {
@@ -45,55 +62,55 @@ public:
 	T_Mapping_Vec(long (*nver)[14], double (*xyz)[3], long kuzlov, long kpar);
 	~T_Mapping_Vec();
 
-	// матрица перехода в разреженном столбцовом формате
+	// transition matrix in sparse column format
 	long *ig_t; 
 	long *jg_t;
 	double *gg_t;
 
-	long *ig_s, *jg_s; // структура SIGMA (вспомогательная структура для T-матрицы)
-	double *s_val;     // значения, к-рые потребуются для формирования всех ненулевых компонент матрицы T 
+	long *ig_s, *jg_s; // SIGMA structure (auxiliary structure for T-matrix)
+	double *s_val;     // values that are required to form all nonzero components of the matrix T 
 
-	long n_c;  // число непрерывных функций (continuous)
-	long n_dc; // число разрывных функций (discontinuous)
-	long n;    // всего функций n = n_c + n_dc
+	long n_c;  // number of continuous functions (continuous)
+	long n_dc; // number of discontinuous functions (discontinuous)
+	long n;    // the total number of functions is n = n_c + n_dc
 
-	long kuzlov; // кол-во узлов в сетке
-	long kpar;   // кол-во параллелепипедов
-	long (*nver)[14]; // ячейки перечисленные своими узлами + терминальные узлы + тип эл-та
-	double (*xyz)[3]; // координаты вершин (всех вместе)
+	long kuzlov; // number of nodes in the grid
+	long kpar;   // number of parallelepipeds     +
+	long (*nver)[14]; // cells listed by their nodes + terminal nodes + element type
+	double (*xyz)[3]; // vertex coordinates (all together)
 
-	long (*edges)[2]; // рёбра, заданные 2-мя вершинами
-	long (*ed)[25];   // ячейки перечисленные своими рёбрами + терминальные рёбра + тип эл-та  !!!!! НЕ ХОРОШО - тип хранится дважды
+	long (*edges)[2]; // edges defined by 2 vertices
+	long (*ed)[25];   // cells listed by their edges + terminal edges + element type
 
 	//--------------------------------------------------------------------------------------
-	// для A-V постановки
-	// реберные
-	long edges_c;  // число непрерывных функций (continuous)
-	long edges_dc; // число разрывных функций (discontinuous)
-	long edges_all;    // всего функций edges_all = edges_c + edges_dc
-	// узловые
-	long nodes_c;  // число непрерывных функций (continuous)
-	long nodes_dc; // число разрывных функций (discontinuous)
-	long nodes_all;    // всего функций nodes_all = nodes_c + nodes_dc
-	// неизвестные
+	// for A-V formulation
+	// for edge functions
+	long edges_c;  // number of continuous functions (continuous)
+	long edges_dc; // number of discontinuous functions (discontinuous)
+	long edges_all;    // the total number of functions is edges_all = edges_c + edges_dc
+	// for nodal functions
+	long nodes_c;  // number of continuous functions (continuous)      
+	long nodes_dc; // number of discontinuous functions (discontinuous)
+	long nodes_all;    // the total number of functions is  nodes_all = nodes_c + nodes_dc
+	// unknown
 	long unk_all;
 
 	long *nvkat;
-	long *m_nded;		// m_nded - массив для хранения номеров неизвестных (узлов и ребер)
-	long *m_nded_type;	// 0 - узел, 1 - ребро
-	long (*nvetr)[20];	// элементы перечисленные своими узлами и ребрами в нумерации соответствующей m_nded
-	// 1-8  - номера узлов в массиве m_nded
-	// 9-20 - номера ребер в массиве m_nded
-	long *nodes_position_in_nded;	// позиции узлов в массиве m_nded
-	long *edges_position_in_nded;	// позиции ребер в массиве m_nded
-	bool *nodes_earth; // 0 - узел лежит в воздухе, 1 - в земле
+	long *m_nded;		// m_nded - array for storing numbers of unknowns (nodes and edges)
+	long *m_nded_type;	// 0 - node, 1 - edge
+	long (*nvetr)[20];	// elements listed by their nodes and edges in the numbering corresponding to m_nded
+	// 1-8  - node numbers in the array m_nded
+	// 9-20 - edge numbers in m_nded array
+	long *nodes_position_in_nded;	// positions of nodes in the m_nded array
+	long *edges_position_in_nded;	// edge positions in m_nded array
+	bool *nodes_earth; // 0 - the node is in the air, 1 - in the ground
 	int Form_data_A_V(long *nvkat);
 
-	// узловая матрица перехода в разреженном столбцовом формате
+	// node transition matrix in sparse column format
 	long *ig_t_nodes; 
 	long *jg_t_nodes;
 	double *gg_t_nodes;
-	// реберная матрица перехода в разреженном столбцовом формате
+	//edge-transition matrix in sparse column format
 	long *ig_t_edges; 
 	long *jg_t_edges;
 	double *gg_t_edges;
@@ -101,17 +118,17 @@ public:
 	//------------------------------------------------------------------------------------------------------------------------------
 
 
-	int Enumerate_Edges_In_Nonconforming_Mesh(); // нумерация рёбер в узловой сетке (генерация edges, ed)
-	int Build_Sigma_Stucture(); // создание ig_s, jg_s, s_val
-	int Build_T_Matrix();       // генерация матрицы T (окончательная)
+	int Enumerate_Edges_In_Nonconforming_Mesh(); // numbering of edges in a nodal mesh (edges, ed generation)
+	int Build_Sigma_Stucture(); // construction of ig_s, jg_s, s_val
+	int Build_T_Matrix();       // generation of matrix T (final)
 
-	// строит цепочку номеров рёбер, необходимых для вычисления 
-	// последующих ненулевых компонент столбца j
+	// builds a chain of edge numbers needed to calculate 
+	// subsequent non-zero components of column j 
 	Btree* Build_Sequence(long e, double value);
 
-	// сформировать вектор весов во всех рёбрах (и в терминальных, и в нетерминальных)
+	// generate a vector of weights in all edges (both terminal and non-terminal)
 	int CalcValuesAll(double *v3_c, double *v3_all);
-	int CalcValuesAll(double *v3); // дописывает в конец
+	int CalcValuesAll(double *v3); // appends to the end
 
 	int UnloadVMesh();
 };

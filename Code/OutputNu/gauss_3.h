@@ -1,4 +1,23 @@
-// для Гаусс-3
+/**                                                                                            
+ * GENERAL REMARKS                                                                             
+ *                                                                                             
+ *  This code is freely available under the following conditions:                              
+ *                                                                                             
+ *  1) The code is to be used only for non-commercial purposes.                                
+ *  2) No changes and modifications to the code without prior permission of the developer.     
+ *  3) No forwarding the code to a third party without prior permission of the developer.      
+ *                                                                                             
+ *  			MTCalc_with_DFP_COCR                                                   
+ *  Gauss-3 quadrature formula (for nodal FEM)     
+ *                                                                                             
+ *  Written by Ph.D. Petr A. Domnikov                                                          
+ *  Novosibirsk State Technical University,                                                    
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                          
+ *  p_domnikov@mail.ru                                                                         
+ *  Version 1.3 March 7, 2021                                                                  
+*/                                                                                             
+
+
 const double gauss_3_t[] = {-0.774596669241483, 0.0, 0.774596669241483};
 const double gauss_3_A[] = {5.0/9.0, 8.0/9.0, 5.0/9.0};
 //----------------------------------------------

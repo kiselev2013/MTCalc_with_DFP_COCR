@@ -1,44 +1,61 @@
+/**                                                                                                                      
+ * GENERAL REMARKS                                                                                                       
+ *                                                                                                                       
+ *  This code is freely available under the following conditions:                                                        
+ *                                                                                                                       
+ *  1) The code is to be used only for non-commercial purposes.                                                          
+ *  2) No changes and modifications to the code without prior permission of the developer.                               
+ *  3) No forwarding the code to a third party without prior permission of the developer.                                
+ *                                                                                                                       
+ *  			MTCalc_with_DFP_COCR                                                                             
+ *  This file contains some basic routines for generation of local matrices and local vector of the right-hand side.     
+ *  Calculation of values of basis functions inside a finite element.
+ *  The T_Brick class contains functions for working with vector (edge-elements) for hexahedron mesh:
+ * 	- calculation of local stiffness and mass matrices;
+ * 	- calculation of the vector of the right-hand side through E_normal;
+ *	- calculation of the Jacobi matrix at Gauss points and at an arbitrary point inside the hexahedron;
+ * 	- output a solution and a curl inside a hexahedron or parallelepiped;
+ * Nodal basis functions are needed here to calculate the transformation.
+ * Template element [-1, 1]^3. (for both nodal and vector).
+ * Vector basis functions with tangential components 2/hx, 2/hy, 2/hz along edges.                                                  
+ *                                                                                                                       
+ *  Written by Prof. Yuri G. Soloveichik, Prof. Marina G. Persova,  Ph.D. Petr A. Domnikov, Ph.D. Yulia I. Koshkina      
+ *  Novosibirsk State Technical University,                                                                              
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                                    
+ *  Corresponding author:                                                                                                
+ *  E-mail: p_domnikov@mail.ru (Petr A. Domnikov)                                                                        
+ *  Version 1.3 March 30, 2021                                                                                           
+*/                                                                                                                       
+
 #pragma once
 #include "ListForLine.h"
 #include "Vec_Prep_Data.h"
 
 //------------------------------------------------------------------------------------
-/*	Класс T_Brick содержит функции для работы с векторными (edge-elements) шестигранниками
-	для нестационарной параболической задачи (петля):
-	- вычисление локальных матриц жёсткости и массы
-	- вычисление вектора правой части через E_нормальное
-	- вычисление матрицы Якоби в точках Гаусса и в произвольной точке внутри шестигранника
-	- выдача решения и ротора внутри шестигранника или параллелепипеда
-
-	Узловые базисные функции здесь нужны для вычисления преобразования.
-	Шаблонный элемент [-1, 1]^3. (как для узловых, так и для векторных).
-	Векторные базисные функции с тангенциальными составляющими 2/hx, 2/hy, 2/hz вдоль рёбер.
-*/
-//------------------------------------------------------------------------------------
 class T_Brick
 {
 public:
-	double hx, hy, hz; // размеры эл-та
-	double xk, xk1, yk, yk1, zk, zk1; // границы параллелепипеда
-    long num; // номер конечного элемента в сетке
+	double hx, hy, hz; // element dimensions 
+	double xk, xk1, yk, yk1, zk, zk1; //parallelepiped boundaries
+    long num; // number of the final element in the grid
 
-	double b[12][12]; // локальная матрица жёсткости
-	double c[12][12]; // локальная матрица массы
-	double c0[12][12]; // локальная матрица массы
-	double cSigma[12][12]; // локальная матрица массы
-	double cSigma0[12][12]; // локальная матрица массы
+	double b[12][12]; // local stiffness matrix        
+	double c[12][12]; // local mass matrix             
+	double c0[12][12]; 	// local mass matrix
+	double cSigma[12][12]; 	// local mass matrix	
+	double cSigma0[12][12];	// local mass matrix 
 
-	double f_re[12];  // значения правой части в серединах рёбер
+	double f_re[12];  // values of the vector of the right-hand side in the midpoints of the edges
 
-	double a[12][12]; // локальная матрица эл-та  
-	double g[12];     // локальный вектор эл-та
+	double a[12][12]; // local matrix element    
+	double g[12];     // local vector of element 
 	double g_harm[24];
 	double g_re[12], g_im[12];
 	double g_re_sig[12], g_im_sig[12];
 	double g_re_b[12], g_im_b[12];
-	double g8[8]; // для узловых
+	double g8[8]; // for nodes
 
-	// коэффициенты уравнения 
+	// equation coefficients
 	double mu;
 	double mu0;
 	double sigma;
@@ -46,51 +63,50 @@ public:
 	double sigma0;
 	double dpr;
 	double dpr0;
-	long n_mat; // номер материала элемента
+	long n_mat; // material number of the element  
 
-	long (*nver)[14]; // номера узлов конечных элементов (13-узловые шестигранники)
-	long (*ed)[25];   // эл-ты перечисленные своими рёбрами + терминальные рёбра + тип эл-та
-	long *nvkat;      // номера материалов конечных эл-тов
-	long (*edges)[2]; // рёбра, заданные 2-мя вершинами
-	double (*xyz)[3]; // координаты узлов
+	long (*nver)[14];  // numbers of finite element nodes (hexahedrons with 13-nodes)   
+	long (*ed)[25];    // elements listed by their edges + terminal edges + element type
+	long *nvkat;       // material numbers of the finite elements                       
+	long (*edges)[2];  // edges defined by 2 vertices                                   
+	double (*xyz)[3];  // coordinates of the nodes                                      
 
-	double *En; // нормальное поле (на рёбрах)
-	double (*En_nodes)[3]; // в узлах 
+	double *En; // normal field (on the edges)
+	double (*En_nodes)[3]; // in nodes 
 
-	//------------------start--AV постановка--start-------------------------------------------
-	long (*nvetr)[20]; // номера узлов(1-8) и ребер(9-20) в массиве nded
+	//------------------start--AV formulation--start-------------------------------------------
+	long (*nvetr)[20]; // numbers of nodes (1-8) and edges (9-20) in the nded array
 	double MtrMass[20][20];
 	double MtrMassRight[20][12];
 	double MtrGest[20][20];
 	double VctRight[40];
 	double g_re_sig_av[20], g_im_sig_av[20];
 
-	// конструктор для МТЗ
+	// constructor for MT
 	T_Brick(long num, long (*nvetr)[20], long (*nver)[14], long (*ed)[25], long (*edges)[2], double (*xyz)[3], long *nvkat,
 		Tensor *sigma3d, double *sigma0, double *mu3d, double omega,
 		long alpha, long n_1d, double *z_1d, double *sin_1d, double *cos_1d);
 	void Calc_block_local_matrix_and_vector_AV();
-	// вычислить локальную матрицу жёсткости на параллелепипеде
+	// calculate the local stiffness matrix on the parallelepiped
 	void Compute_Local_Matrix_B_AV(); 
-	// вычислить локальную матрицу массы на параллелепипеде
+	// calculate the local mass matrix on the parallelepiped  
 	void Compute_Local_Matrix_C_AV(); 
-	// вычислить локальную матрицу 20x12 для формирования правой части
+	// compute a local 20x12 matrix to form the right side
 	void Compute_Local_Matrix_Pr_AV(); 
-	// вычислить локальный вектор правой части с персчётом 1-мерного поля 
-	// в 3-мерную сетку для МТЗ
+	// calculate the local vector of the right side with the conversion of the 1-dimensional field into a 3-dimensional mesh for MT
 	void Calc_local_vector_for_MT_AV();
-	//------------------end--AV постановка--end-------------------------------------------
+	//------------------end--AV formulation--end-------------------------------------------
 
 	int tasktype;
 
-	// этот конструктор обычно используется для выдачи с элемента
+	// this constructor is usually used to return from an element
 	T_Brick(double *x_coords, double *y_coords, double *z_coords, long type_of_hex);
 
-	// конструктор для нестационарной задачи (для вычисления локальных матриц)
+	// constructor for a non-stationary task (for calculating local matrices)
 	T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], double (*xyz)[3], long *nvkat,
 		double *sigma3d, double *sigma0, double *mu3d, double *En);
 
-	// конструктор для МТЗ
+	// constructor for MT
 	T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], double (*xyz)[3], long *nvkat,
 		double *sigma3d, double *sigma0, double *mu3d, double omega,
 		long alpha, long n_1d, double *z_1d, double *sin_1d, double *cos_1d);
@@ -99,39 +115,38 @@ public:
 
 	~T_Brick();
 
-	//	вычислить локальную матрицу для нестационарной задачи
-	// (матрица массы и вектор или только прибавить матрицу жёсткости)
+	// calculate local matrix for non-stationary problem
+	// (mass matrix and vector or just add stiffness matrix)
 	void Compute_Local_Matrix_And_Vector(const long what_compute); 
 
-	// вычислить локальную матрицу жёсткости на параллелепипеде
+	// calculate the local stiffness matrix on the parallelepiped
 	void Compute_Local_Matrix_B(); 
 
-	// вычислить локальную матрицу массы на параллелепипеде
+	// calculate the local mass matrix on the parallelepiped
 	void Compute_Local_Matrix_C(); 
 
-	// вычисление вектора правой части через E_нормальное
+	// calculation of the vector of the right-hand side through E_Normal
 	void Compute_Local_Vector_For_Anomal_Problem();
 
-	// вычисление вектора правой части через нормальное поле, в случае, когда все коэф-ты разрывны
+	// calculation of the vector of the right-hand side through the normal field, in the case when all the coefficients are discontinuous
 	void ComputeLocalVectorMuEpsSigma(double *An, double *d2An);
 
-	//	для МТЗ	 
+	//	for MT	 
 
-	double omega; // циклическая частота для гармонической задачи
-	double asin0[12], acos0[12]; // нормальное поле в серединах рёбер 
+	double omega; 			// cyclic frequency for the harmonic task      
+	double asin0[12], acos0[12]; 	// normal field in the midpoints of the edges  
 
-	// для одномерки в МТЗ 
+	// for MT 1D problem  
 	long alpha;
 	long n_1d;
 	double *z_1d;
 	double *sin_1d;
 	double *cos_1d;
 
-	// вычислить локальный вектор правой части с персчётом 1-мерного поля 
-	// в 3-мерную сетку для МТЗ
+	// calculate the local vector of the right-hand side with the conversion of the 1-dimensional field into a 3-dimensional mesh for MT
 	void Calc_local_vector_for_MT();
 
-	// вычислить нормальное поле в серединах рёбер (для МТЗ)
+	// calculate the normal field at the midpoints of the edges (for MT)
 	void Calc_asin_acos_at_middle_of_edges();
 
 	void Calc_block_local_matrix_and_vector();
@@ -141,94 +156,94 @@ public:
 	void Calc_V_Node_2(double *q,double x, double y, double z);
 	double V[3];
 
-	// для векторных шестигранников
+	// for vector hexahedrons
 
-	double x[8], y[8], z[8]; // координаты вершин шестигранника	
-	double J[3][3];          // матрица Якоби
-	double J_1[3][3];		 // J^{-1}
-	double J_1_T[3][3];		 // J^{-T}
-	double det_J;            // Якобиан (определитель матрицы Якоби)
-	double det_J_abs;        // модуль Якобиана
-	long type_of_hex;        // 0..30 - параллелепипед, 31..61 - шестигранник
-	double phi_all[12][3];    // базисные функций в точке интегрирования
-	double rot_all[12][3];    // роторы от баз. функций в точке интегрирования
+	double x[8], y[8], z[8]; // coordinates of hexahedron vertices                   
+	double J[3][3];          // Jacobian matrix                                      
+	double J_1[3][3];	 	 // J^{-1}                                       
+	double J_1_T[3][3];	 	 // J^{-T}                                       
+	double det_J;            // Jacobian (determinant of the Jacobian matrix)        
+	double det_J_abs;        // Jacobian modulus                                     
+	long type_of_hex;        // 0..30 - parallelepiped, 31..61 - hexahedron
+	double phi_all[12][3];    // basis functions at the point of integration              
+	double rot_all[12][3];    // curls from basis functions at the point of integration   
 
-	// преобразование шестигранника из шаблонного в произвольный
-	// (получаем глобальные координаты из локальных)
+	// converting a hexagon from template to arbitrary
+	// (get global coordinates from local)
 	void Mapping(double *in, double *out);
 
-	void Calc_J(int n_of_point); // вычисляет матрицу Якоби в точке Гаусса 
-	void Calc_J(double x, double y, double z); // вычисляет матрицу Якоби в произвольной точке 
-	void Calc_J_on_face(int n_of_point); // вычисляет Якобиан в точках, расположенных в грани
-	void Calc_J_in_parallelepiped(); // вычисляет матрицу Якоби в случае параллелепипеда
+	void Calc_J(int n_of_point); 			// calculates the Jacobi matrix at the Gauss point                    
+	void Calc_J(double x, double y, double z); 	// calculates the Jacobian matrix at an arbitrary point               
+	void Calc_J_on_face(int n_of_point); 		// calculates the Jacobian at the points located in the face          
+	void Calc_J_in_parallelepiped(); 		// calculates the Jacobian matrix in the case of parallelepiped       
 
-	void Calc_local_matrix_b_for_hexahedron(); // матрица жёсткости (численно)
-	void Calc_local_matrix_c_for_hexahedron(); // матрица массы (численно)
+	void Calc_local_matrix_b_for_hexahedron(); // stiffness matrix (numerically)
+	void Calc_local_matrix_c_for_hexahedron(); // mass matrix (numerically)
 
-	// Вычисляет значение векторного поля внутри произвольного шестигранника
+	// Calculates the value of the vector field inside an arbitrary hexahedron
 	void Calc_value_inside_hex(double *ves, double *in, double *out); 
 
-	// значение i-й базисные функции на параллелепипеде 
+	// value of the i-th basis function on the parallelepiped
 	void Basis_func_on_vec_par(long i, double *in, double *out);
 
-	// значение i-й базисные функции на параллелепипеде с тангенциальными составляющими 2/hx, 2/hy, 2/hz
+	// value of the i-th basis function on a parallelepiped with tangential components 2/hx, 2/hy, 2/hz
 	void Basis_func_on_vec_par(long i, double ves, double *in, double *out);
 
-	// значение i-й базисной функции на шаблонном параллелепипеде 
+	// value of the i-th basis function on the template parallelepiped 
 	void Basis_func_on_reference_vec_par(long i, double *in, double *out);	
 
-	// значение i-й базисной функции на шестиграннике 
+	// value of the i-th basis function on the hexahedron
 	void Basis_func_on_vec_hex(long i, double ves, double *in, double *out);
 
-	// выдать ротор в произвольной точке внутри шестигранника
+	// output the curl at an arbitrary point inside the hexahedron
 	void Calc_rotor_inside_hex(double *ves, double *in, double *out); 
 
-	// значение ротора i-й базисной функции на шаблонном параллелепипеде 
+	// the value of the curl of the i-th basis function on the template parallelepiped  
 	void Rot_of_basis_func_on_reference_vec_par(long i, double *in, double *out);
 
-	// значение только x-компоненты ротора i-й базисной функции внутри параллелепипеда
+	// the value of only the x-component of the curl of the i-th basis function inside the parallelepiped     
 	void Rotx_of_basis_func_on_reference_vec_par(long i, double x, double *out);
 
-	// значение только y-компоненты ротора i-й базисной функции внутри параллелепипеда
+	// the value of only the y-component of the curl of the i-th basis function inside the parallelepiped       
 	void Roty_of_basis_func_on_reference_vec_par(long i, double y, double *out);
 
-	// значение только z-компоненты ротора i-й базисной функции внутри параллелепипеда
+	// the value of only the z-component of the curl of the i-th basis function inside the parallelepiped
 	void Rotz_of_basis_func_on_reference_vec_par(long i, double z, double *out);
 
-	// значение ротора i-й базисной функции внутри параллелепипеда
+	// the value of the curl  of the i-th basis function inside the parallelepiped  
 	void Rot_of_basis_func_on_vec_par(long i, double ves, double *in, double *out);
 
-	// выдать x,y-компоненту поля в точках Гаусса в верхней грани шестигранника
-	// сразу для трёх решений (для 3-слойной схемы по времени)
+	// give the x,y-component of the field at Gauss points in the upper face of the hexahedron
+	// for three solutions at once (for a 3-layer scheme in time)                          	
 	void Get_x_y_on_face(double *ves1, double *ves2, double *ves3,
 		double *outx1, double *outx2, double *outx3,
 		double *outy1, double *outy2, double *outy3,
 		double *outz1, double *outz2, double *outz3);
 
-	// выдать z-компоненту ротора в точках Гаусса в верхней грани шестигранника
-	// сразу для трёх решений (для 3-слойной схемы по времени)
+	// give the z-component of the curl at Gauss points in the upper face of the hexahedron
+	// for three solutions at once (for a 3-layer scheme in time)                          
 	void Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 		double *out1, double *out2, double *out3);
 
-	// выдать компоненты ротора в точках Гаусса в верхней грани шестигранника
-	// сразу для трёх решений (для 3-слойной схемы по времени)
+	// give the components of the curl at Gauss points in the upper face of the hexahedron
+	// for three solutions at once (for a 3-layer scheme in time)                          
 	void Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 						  double *out1, double *out2, double *out3,
 						  double *outx1, double *outx2, double *outx3,
 						  double *outy1, double *outy2, double *outy3);
 
-	// Шаблонные одномерные базисные функции на [-1, 1]^3
+	// Template one-dimensional basis functions on [-1, 1]^3 
 	double l0(double x);
 	double l1(double x);
 
-	// Шаблонные узловые базисные функции на [-1, 1]^3
+	// Template nodal basis functions on [-1, 1]^3
 	double Phi_node(long i, double x, double y, double z);
 
-	// производные от узловых шаблонных базисных ф-ций
+	// derivatives of nodal template basic functions
 	double dPhi_node(long i, long j, double x, double y, double z);
 
-	// выдать значение векторного поля на параллелепипеде
-	// (координаты точки - глобальные)
+	// print the value of a vector field on a parallelepiped 
+	// (point coordinates - global)                          
 	void VectorFieldOnPar(double x, double y, double z, double *ves,
 		double *x_out, double *y_out, double *z_out);
 	double ScalarFieldOnPar(double x, double y, double z, double *ves);
@@ -238,15 +253,15 @@ public:
 
 	void ScalarFieldOnParCff(double x, double y, double z, double *cff);
 
-	//  Выдать в центре шестигранника, q - вектор весов
+	// Output at the center of the hexahedron, q is the vector of weights
 	double GetValueInHexCenter(double *q);
 	void GetGradInHexCenter(double *q, double *out, int cj);
 
-	// выдать x-компоненту поля с параллелепипеда сразу для трёх значений весов
+	// return the x-component of the field from the parallelepiped for three weight values at once
 	void VectorFieldXOnPar3(double y, double z, double *ves_j2, double *ves_j1, double *ves_j,
 		double *out_j2, double *out_j1, double *out_j);
 
-	// выдать y-компоненту поля с параллелепипеда сразу для трёх значений весов
+	// return the y-component of the field from the parallelepiped for three weight values at once
 	void VectorFieldYOnPar3(double x, double z, double *ves_j2, double *ves_j1, double *ves_j,
 		double *out_j2, double *out_j1, double *out_j);
 
@@ -257,7 +272,7 @@ public:
 		double *ves1, double *ves2, double *ves3,
 		double *out1, double *out2, double *out3);
 
-	// замена переменных
+	// variable substitution
 	void Transformation_of_variables(double *in, double *out);
 	void Transformation_of_variables(double *x, double *y, double *z);
 	double Xi(double x);
@@ -265,29 +280,29 @@ public:
 	double Zeta(double z);
 
 
-	// для ГЭЛ
+	
 
-	// выдать потенциал в точках Гаусса в верхней грани шестигранника
-	// сразу для трёх решений (для 3-слойной схемы по времени)
+	// give the potential at Gauss points in the upper face of the hexahedron 
+	// for three solutions at once (for a 3-layer time scheme) 
 	void GetAonFace(double *ves1, double *ves2, double *ves3,
 		double *out1, double *out2, double *out3);
 
-	// для гармонической петли
+	
 	void Set_dpr(double dpr);
 	void Set_dpr0(double dpr0);
 	void Set_mu0(double mu0);
 	Vec_Prep_Data *d;
 
 
-	//  для вычисления вектора правой части с учётом, что ток=const на элементе
+	// to calculate the vector of the right-habd side, taking into account that the current=const on the element
 
-	double asin0n[8][3], acos0n[8][3]; // нормальное поле в узлах
-	double asin0c[3], acos0c[3]; // нормальное поле в центре элемента
+	double asin0n[8][3], acos0n[8][3]; //normal field at nodes
+	double asin0c[3], acos0c[3]; // normal field in the center of the element
 
-	// вычислить локальный вектор правой части с учётом, что ток=const на элементе
+	// calculate the local vector of the right-hand side, taking into account that current=const on the element
 	void LocalVectHarmConst();
 
-	// вычислить нормальное поле в вершинах (для гармонических задач)
+	// calculate the normal field at the vertices (for harmonic problems)
 	void Calc_asin_acos_at_nodes();
 
 	void GetVectorFieldNodes(double *ves, double *ax, double *ay, double *az);
@@ -344,6 +359,6 @@ const double TANGENT_VECTORS_ON_REFERENCE_CUBE[12][3] = {
 	0.0, 0.0, 1.0
 };
 //-----------------------------------------------------------------------
-const long REG_EDGES[12][2]={ 	// какие нетерминальные рёбра есть на элементе
+const long REG_EDGES[12][2]={ 	// what non-terminal edges are on the element
 	0,1, 2,3, 4,5, 6,7, 0,2, 4,6, 1,3, 5,7, 0,4, 1,5, 2,6, 3,7 };
 //-----------------------------------------------------------------------

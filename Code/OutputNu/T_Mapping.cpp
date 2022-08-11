@@ -1,3 +1,23 @@
+/**                                                                                                        
+ * GENERAL REMARKS                                                                                         
+ *                                                                                                         
+ *  This code is freely available under the following conditions:                                          
+ *                                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                                            
+ *  2) No changes and modifications to the code without prior permission of the developer.                 
+ *  3) No forwarding the code to a third party without prior permission of the developer.                  
+ *                                                                                                         
+ *  			MTCalc_with_DFP_COCR                                                               
+ *  This file contains implementation of the class for transition matrix used to store a nonconforming mesh
+ *                                                                                                         
+ *                                                                                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                                      
+ *  Novosibirsk State Technical University,                                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                      
+ *  p_domnikov@mail.ru                                                                                     
+ *  Version 2.1 March 17, 2021                                                                              
+*/                                                                                                                                                                                                                   
+
 #include "stdafx.h"
 #include "T_Mapping.h"
 #include "Portret.h"
@@ -112,29 +132,30 @@ T_Mapping_Vec::~T_Mapping_Vec()
 	if(edges) {delete [] edges; edges = NULL;}
 }
 //-------------------------------------------------------------------------
-// нумерация рёбер в узловой сетке (генерация edges, ed)
+// numbering of edges in a nodal mesh (edges and ed generation)
 //-------------------------------------------------------------------------
 int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 {
-	long type;    // тип элемента (всего 31 тип)
-	list *s=NULL;      // структура для обычных рёбер
-	list *s_term=NULL; // структура для терминальных рёбер
-	list *l=NULL;      // для того, чтобы бегать по структуре
-	Portret P;    // функции для работы со структурой хранятся в классе Portret
-	long *ig_old_reg=NULL, *jg_old_reg=NULL; // с повторениями
-	long *ig_new_reg=NULL, *jg_new_reg=NULL; // без повторений
-	long *ig_ter=NULL, *jg_ter=NULL; // ig, jg, получаемые из структуры для терминальных рёбер
-	long *orientation=NULL; // глобальная ориентация рёбер 
+	long type;    // element type (total 31 types)
+	list *s=NULL;      // structure for regular edges
+	list *s_term=NULL; // structure for terminal edges
+	list *l=NULL;      // in order to run through the structure
+	Portret P;    // functions for working with the structure are stored in the Portret class
+	long *ig_old_reg=NULL, *jg_old_reg=NULL; // with duplicates
+	long *ig_new_reg=NULL, *jg_new_reg=NULL; // without duplicates
+	long *ig_ter=NULL, *jg_ter=NULL; // ig, jg, obtained from the structure for the terminal edges
+	long *orientation=NULL; // global orientation of edges
 	long flag;
 	long i, j, k, m, tmp1, tmp2, v0, v1, t;
 
-	long reg[12][2]={ 	// какие нетерминальные рёбра есть на элементе
+	long reg[12][2]={ 	// shows what non-terminal edges are on the element
 	1,2, 3,4, 5,6, 7,8, 1,3, 5,7, 2,4, 6,8, 1,5, 2,6, 3,7, 4,8 };
 
-	// какие терминальные рёбра есть на элементе
-	// (для шестигранника связи между локальными рёбрами и вершинами те же, что и для 
-	// параллелепипеда, только тип элемента увеличен на 31, поэтому при обработке
-	// шестигранника мы просто отнимаем 31 от типа эл-та).
+	// what terminal edges are on the element
+	// (for a hexagon, the connections between local edges and vertices are the same as for a parallelepiped,
+	// but the element type is increased by 31, so when processing a hexagon, 
+	// we simply subtract 31 from the element type).
+		
 	long ter[31][12][2]={
 //	1      2      3      4      5      6      7      8      9      10     11     12
 	0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,  // type 1
@@ -170,7 +191,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 	5,11,  11,6,  9,13,  13,10, 7,12,  12,8,  5,9,   9,7,   11,13, 13,12, 6,10,  10,8  // type 31  
 	};
 
-	// в Си нумерация с нуля -> вычитаем 1
+	// in C, numbering from zero -> subtract 1
 	for(i=0; i<12; i++)
 	for(j=0; j<2;  j++) 
 		reg[i][j]--;
@@ -180,43 +201,43 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 	for(k=0; k<2;  k++)
 		ter[i][j][k]--;
 
-	s = new list[kuzlov];      // выделяем память под структуру для регулярных рёбер
+	s = new list[kuzlov];     // allocate memory for the structure for regular edges
 	if(s == 0)
 		Memory_allocation_error("s", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
 
-	s_term = new list[kuzlov]; // выделяем память под структуру для терминальных рёбер
+	s_term = new list[kuzlov]; // allocate memory for the structure for the terminal edges
 	if(s_term == 0)
 		Memory_allocation_error("s_term", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
 
-	for(i=0; i<kuzlov; i++) // обнуляем
+	for(i=0; i<kuzlov; i++) // set to zero
 	{
 		s[i].next = NULL;
 		s_term[i].next = NULL;
 	}
 
-	// цикл по эл-там (обычные рёбра заносим в одну структуру, терминальные - в другую)
+	// cycle through elements (regular edges are entered into one structure, terminal - into another)
 	for(i=0; i<kpar; i++)
 	{
 		type = nver[i][13];
-		if(type>30) // если шестигранник
+		if(type>30) // if it is a hexagon
 			type -= 31;
 
 		for(j=0; j<12; j++)
 		{
-			// обычные рёбра
+			// regular edges
 			v0 = reg[j][0];
 			v1 = reg[j][1];
 
 			tmp1 = nver[i][v0];
 			tmp2 = nver[i][v1];
 
-			// заносим в структуру для регулярных рёбер
+			// put into structure for regular edges
 			if(tmp1 < tmp2) 
 			{	P.Add_In_Ordered_List(&s[tmp2], tmp1);	}
 			else
 			{	P.Add_In_Ordered_List(&s[tmp1], tmp2);	}
 
-			// терминальные рёбра
+			// terminal edges
 			v0 = ter[type][j][0];
 			v1 = ter[type][j][1];
 
@@ -225,7 +246,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 				tmp1 = nver[i][v0];
 				tmp2 = nver[i][v1];
 
-				// заносим в структуру для терминальных рёбер
+				// enter into the structure for the terminal edges
 				if(tmp1 < tmp2)
 				{	P.Add_In_Ordered_List(&s_term[tmp2], tmp1);	}
 				else
@@ -234,10 +255,11 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		}
 	}
 
-	// подсчитываем размер структур
-	// здесь значения n_c, n_dc, n не окончательные - после удаления повторений они изменятся
-	n_c  = 0; // размер s
-	n_dc = 0; // размер s_term
+	// calculate the size of structures
+	// values n_c, n_dc, n are not final here - they will change after deleting duplications
+	
+	n_c  = 0; // size of s
+	n_dc = 0; // size of s_term
 	for(i=0; i<kuzlov; i++)
 	{
 		n_c += P.Size_Of_List(s[i].next);
@@ -245,7 +267,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 	}
 	n = n_c + n_dc; 
 
-	// выделяем память 
+	// allocate memory
 	ig_old_reg = new long[kuzlov+1];
 	if(ig_old_reg == 0)
 		Memory_allocation_error("ig_old_reg", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
@@ -262,8 +284,8 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 	if(jg_ter == 0)
 		Memory_allocation_error("jg_ter", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
 
-	// заполняем ig_old, jg_old
-	// обычные рёбра
+	// fill ig_old, jg_old
+	// regular edge
 	i = 0;
 	ig_old_reg[0] = 0;
 	for(k=0;k<kuzlov;k++)
@@ -279,7 +301,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		ig_old_reg[k+1] = i;
 	}
 
-	// терминальные рёбра
+	// terminal edges
 	i = 0;
 	ig_ter[0] = 0;
 	for(k=0;k<kuzlov;k++)
@@ -295,17 +317,17 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		ig_ter[k+1] = i;
 	}
 
-	// освобождаем память
+	// deallocate memory
 	if(s) {delete [] s; s = NULL;}
 	if(s_term) {delete [] s_term; s_term = NULL;}
 
-	// удаляем повторения (терминальные рёбра занесены 2 раза - дублируются в структуре для обычных рёбер)
+	// remove duplicates (terminal edges are listed 2 times - duplicated in the structure for regular edges)
 	for(i=0; i<kuzlov; i++)
 	{
 		for(j=ig_ter[i]; j<=ig_ter[i+1]-1; j++)
 		{
 			k = jg_ter[j];
-			// теперь ищем ребро (i,k) в структуре для обычных рёбер
+			// now look for an edge (i,k) in the structure for regular edges
 			for(m=ig_old_reg[i]; m<=ig_old_reg[i+1]-1; m++)
 				if(jg_old_reg[m] == k)
 				{
@@ -315,13 +337,13 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		}
 	}
 
-	// переписываем ребра в массив edges[][2] (без повторений)...
+	// rewrite the edges into the edges[][2] array (no duplicates)...
 	edges = new long[n_c][2]; 
 	if(edges == 0)
 		Memory_allocation_error("edges", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
 
 	k = 0;
-    for(i=0; i<kuzlov; i++) // обычные рёбра
+    for(i=0; i<kuzlov; i++) // regular edge
 	{
 		for(j=ig_old_reg[i]; j<=ig_old_reg[i+1]-1; j++)
 			if(jg_old_reg[j] >= 0)
@@ -332,7 +354,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 			}
 	}
 
-    for(i=0; i<kuzlov; i++) // терминальные рёбра
+    for(i=0; i<kuzlov; i++) // terminal edges
 	{
 		for(j=ig_ter[i]; j<=ig_ter[i+1]-1; j++)
 		{
@@ -342,11 +364,11 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		}
 	}
 
-	// истинное число обычных и терминальных рёбер (без повторений)
+	// true number of regular and terminal edges (no duplicates)
 	n = n_c;
 	n_c = n_c - n_dc;
 	
-	// новые ig_new_reg[], jg_new_reg[]
+	// new ig_new_reg[], jg_new_reg[]
 	ig_new_reg = new long[kuzlov+1];
 	if(ig_new_reg == 0)
 		Memory_allocation_error("ig_new_reg", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
@@ -370,26 +392,27 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		ig_new_reg[i+1] = k;
 	}
 
-	// освобождаем память
+	// free memory
 	if(ig_old_reg) {delete [] ig_old_reg; ig_old_reg=NULL;}
 	if(jg_old_reg) {delete [] jg_old_reg; jg_old_reg=NULL;}
 
-	// теперь нужно сгенерировать структуру, в которой для каждого элемента храняться номера его рёбер + 
-	// номера терминальных рёбер (ed[][25]).
+	// now we need to generate a structure that stores the numbers of its edges for each element +
+	// numbers of terminal edges (ed[][25]).
+	
 	ed = new long[kpar][25];
 	if(ed == 0)
 		Memory_allocation_error("ed", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
 
 	for(i=0; i<kpar; i++)
 	{
-		type = nver[i][13]; // тип		
+		type = nver[i][13]; // type		
 		if(type>30)
 			type -= 31;
 
 		ed[i][24] = type; 
 		for(j=0; j<12; j++) 
 		{
-			// обычные рёбра
+			// regular edge
 			v0 = nver[i][reg[j][0]];
 			v1 = nver[i][reg[j][1]];
 			Sort2(&v0, &v1);
@@ -401,8 +424,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 					flag = 1;
 					break;
 				}
-			// если не нашли ребро(v0,v1) в структуре для регулярных рёбер -
-			// значит оно терминальное
+			// if we didn't find an edge(v0,v1) in the structure for regular edges, that it is terminal	
 			if(flag == 0) 
 			{
 				for(k=ig_ter[v0]; k<=ig_ter[v0+1]-1; k++)
@@ -413,7 +435,7 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 					}
 			}
 
-			// терминальные рёбра
+			// terminal edges
 			tmp1 = ter[type][j][0];
 			tmp2 = ter[type][j][1];
 			if(tmp1 >=0 && tmp2>=0)
@@ -435,13 +457,13 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		}
 	}
 
-	// освобождаем память
+	// free memory
 	if(ig_ter) {delete [] ig_ter; ig_ter=NULL;}
 	if(jg_ter) {delete [] jg_ter; jg_ter=NULL;}
 	if(ig_new_reg) {delete [] ig_new_reg; ig_new_reg=NULL;}
 	if(jg_new_reg) {delete [] jg_new_reg; jg_new_reg=NULL;}
 
-	// ориентация (определяем глобальную ориентацию по локальной ориентации)
+	// orientation (determine global orientation from local orientation)
 	orientation = new long[n];	
 	if(orientation == 0)
 		Memory_allocation_error("orientation", "T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh");
@@ -458,12 +480,12 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 
 		for(j=0; j<12; j++)
 			if(v[reg[j][0]] > v[reg[j][1]]) 
-			{// глобальная ориентация не соответствует локальной
+			{// global orientation does not match the local one
 				orientation[ed[i][j]] = -1;
 			}
 	}
-	// если глобальная ориентация не соответствует локальной, 
-	// то меняем местами начало и конец ребра в edges[][2]
+
+	// if the global orientation does not match the local one, then swap the beginning and end of the edge in edges[][2] 	
 	for(i=0; i<n; i++)
 	{
 		if (orientation[i]==-1)
@@ -474,21 +496,21 @@ int T_Mapping_Vec::Enumerate_Edges_In_Nonconforming_Mesh()
 		}
 	}
 
-	// освобождаем память
+	// free memory
 	if(orientation) {delete [] orientation; orientation=NULL;}
 
 	return 0;
 }
 //-----------------------------------------------------------------------------------
-//- Построение вспомогательной структуры для Т-матрицы создание ig_s, jg_s, s_val
+// Construction of an auxiliary structure for the T-matrix creation of ig_s, jg_s, s_val
 //-----------------------------------------------------------------------------------
 int T_Mapping_Vec::Build_Sigma_Stucture()
 {
-	// структура sigma хранится в виде массивов ig_s и jg_s
-	list *s=NULL;       // структура
+	// the sigma structure is stored as arrays ig_s and jg_s
+	list *s=NULL;       // structure
 	long size_s;   
-	list *l=NULL;       // для того, чтобы бегать по структуре
-	Portret P;     // функции для работы со структурой хранятся в классе Portret
+	list *l=NULL;       // in order to run through the structure
+	Portret P;     // functions for working with the structure are stored in the class Portret
 	long i, j, k, m, e, e1, e2;
 	long type;
 	In_Out R;
@@ -497,8 +519,9 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	double x0_reg2[3];
 	double a, b, len;
 
-    // локальные номера рёбер КЭ (содержащего терминальное ребро),которым соответствуют локальные базисные функции
-	// принимающие ненулевые значения в рассматриваемом терминальном ребре
+    	// local numbers of FE edges (containing a terminal edge), which correspond to local basis functions 
+	// that take non-zero values in the considered terminal edge
+
 		long n_sig_ed[31][12][2] = {
 //	1      2      3      4      5      6      7      8      9      10     11     12
 	0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,   0,0,  // type 1
@@ -534,13 +557,13 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	3,0,   3,0,   13,17, 14,18, 4,0,   4,0,   6,0,   6,0,   19,23, 20,24, 8,0,   8,0
 	};
 
-	 // в Си нумерация с нуля -> вычитаем 1
+	 // in C, numbering from zero -> subtract 1
 	for(i=0;i<31;i++)
 	for(j=0;j<12;j++)
 	for(k=0;k<2;k++)
 		n_sig_ed[i][j][k]--;
 
-	s = new list[n]; // выделяем память под структуру
+	s = new list[n]; // allocate memory for the structure
 	if(s == 0)
 		Memory_allocation_error("s", "T_Mapping_Vec::Build_Sigma_Stucture");
 
@@ -550,7 +573,7 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	for(i=0; i<kpar; i++)
 	{
 		type = ed[i][24];
-		for(j=0; j<12; j++) // максимум 12 терминальных рёбер на элементе
+		for(j=0; j<12; j++) // maximum 12 terminal edges per element
 			for(k=0; k<2; k++)
 			{
 				e = n_sig_ed[type][j][k];
@@ -561,12 +584,12 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 			}//k
 	}
 
-	// подсчитываем размер структуры
+	// calculate the size of the structure
 	size_s = 0;
 	for(i=0; i<n; i++)
 		size_s += P.Size_Of_List(s[i].next);
 
-	// выделяем память
+	// allocate memory
 	ig_s = new long[n+1];
 	if(ig_s == 0)
 		Memory_allocation_error("ig_s", "T_Mapping_Vec::Build_Sigma_Stucture");
@@ -575,7 +598,7 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	if(jg_s == 0)
 		Memory_allocation_error("jg_s", "T_Mapping_Vec::Build_Sigma_Stucture");
 
-	// заполняем ig_s, jg_s
+	// fill ig_s, jg_s
 	i = 0;
 	ig_s[0] = 0;
 	for(k=0; k<n; k++)
@@ -593,7 +616,7 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 
 	if(s) {delete [] s; s=NULL;}
 
-	// заполняем s_val
+	// fill s_val
 	s_val = new double[size_s];
 	if(s_val == 0)
 		Memory_allocation_error("s_val", "T_Mapping_Vec::Build_Sigma_Stucture");
@@ -601,16 +624,16 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	for(i=0; i<kpar; i++)
 	{
 		type = ed[i][24];
-		for(j=0; j<12; j++) // максимум 12 терминальных рёбер на элементе
+		for(j=0; j<12; j++) // maximum 12 terminal edges per element
 		{
-			e1 = n_sig_ed[type][j][0]; // локальные 
+			e1 = n_sig_ed[type][j][0]; // local 
 			e2 = n_sig_ed[type][j][1];
 
-			// на ребре лежит терминальное ребро
+			// there is a terminal edge on the edge
 			if(e1 !=-1 && e2 == -1) 
 			{                      
-				e = ed[i][j+12]; // терминальное ребро (глобальный номер)
-				e1 = ed[i][e1];  // ребро, к-рое содержит терминальное ребро
+				e = ed[i][j+12]; // terminal edge (global number)
+				e1 = ed[i][e1];  // edge that contains a terminal edge
 
 				for(k=0;k<3;k++)
 				{
@@ -634,12 +657,12 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 				}
 			}
 
-			// терминальное ребро лежит в грани)
-			else if(e1 != -1 && e2 != -1) // если сразу 2 функции принимают ненулевое значение на терминальном ребре
+			// terminal edge lies in the face
+			else if(e1 != -1 && e2 != -1) // if 2 functions at once take a non-zero value on the terminal edge
 			{
-				// теперь глобальные
-				e = ed[i][j+12]; // терминальное ребро
-				e1 = ed[i][e1];  // два нетерминальных(?) ребра, участвующих в построении функции на терминальном ребре
+				// now global one
+				e = ed[i][j+12]; // terminal edge
+				e1 = ed[i][e1];  // two non-terminal(?) edges involved in building a function on a terminal edge
 				e2 = ed[i][e2];
 
 				for(k=0; k<3; k++)
@@ -671,12 +694,12 @@ int T_Mapping_Vec::Build_Sigma_Stucture()
 	return 0;
 }
 //-------------------------------------------------------------------------------------------------
-//--- генерация матрицы T (окончательная)
+// generation of matrix T (final)
 //--------------------------------------------------------------------------------------------------
 int T_Mapping_Vec::Build_T_Matrix()
 {
 	long i, j, k;
-	std::vector<long_double> *s_t=NULL; // структура (для матрицы T; массивы ig_t, jg_t, gg_t создаются из неё)
+	std::vector<long_double> *s_t=NULL; // structure (for matrix T; arrays ig_t, jg_t, gg_t are created from it)
 	long_double tmp;
 	Btree *d=NULL, *dd=NULL;
 	std::stack<Btree*> s;
@@ -686,25 +709,24 @@ int T_Mapping_Vec::Build_T_Matrix()
 	if(s_t == 0)
 		Memory_allocation_error("s_t", "T_Mapping_Vec::Build_T_Matrix");
 
-	for(j=this->n_c; j<this->n; j++) // Выбираем очередной номер столбца j (начиная с j=n_c+1). 
+	for(j=this->n_c; j<this->n; j++) // Select the next column number j (starting from j=n_c+1). 
 	{
-		// Для него определяем номера рёбер k и соответствующие им значения $T_{kj}$  или $\tilda T_{kj}$
-		// по сформированной ранее структуре данных Sigma.
-
+		// For it, we determine the numbers of edges k and the corresponding values $T_{kj}$ or $\tilda T_{kj}$ 
+		// according to the previously formed Sigma data structure.
 		for(i=this->ig_s[j]; i<=this->ig_s[j+1]-1; i++)
 		{
 			k = jg_s[i];
-			if(k < this->n_c) // просто добавляем
+			if(k < this->n_c) //just add
 			{ 
 				tmp.i = k;
 				tmp.d = s_val[i];
 				s_t[j].push_back(tmp);
 			}
 			else // k>=n_c
-			{ // начинается построение цепочки
-				dd = this->Build_Sequence(k, s_val[i]); // построили бинарное дерево
+			{ // chain construction begins
+				dd = this->Build_Sequence(k, s_val[i]); //construct a binary tree
 
-				// обходим дерево и заносим соответствующие значения
+				// traverse the tree and enter the appropriate values
 				d = dd;
 				d->visit(s_t, d, j);
 				delete dd; dd=NULL;
@@ -712,17 +734,17 @@ int T_Mapping_Vec::Build_T_Matrix()
 		}// i
 	} // j
 
-	// освобождаем память для вспомогательной структуры 
+	// free memory for auxiliary structure 
 	if(s_val) {delete [] s_val;	s_val = NULL;}
 	if(ig_s)  {delete [] ig_s;	ig_s = NULL;}
 	if(jg_s)  {delete [] jg_s;	jg_s = NULL;}
 
-	// подсчитываем размер структуры
+	//calculate the size of the structure
 	size_s_t = 0;
 	for(i=0; i<n; i++)
 		size_s_t += (long)s_t[i].size();
 
-	// выделяем память под T-матрицу
+	// allocate memory for the T-matrix
 	ig_t = new long[n+1];
 	if(ig_t == 0)
 		Memory_allocation_error("ig_t", "T_Mapping_Vec::Build_T_Matrix");
@@ -735,7 +757,7 @@ int T_Mapping_Vec::Build_T_Matrix()
 	if(gg_t == 0)
 		Memory_allocation_error("gg_t", "T_Mapping_Vec::Build_T_Matrix");
 
-	// заполняем ig_t, jg_t, gg_t
+	// fill ig_t, jg_t, gg_t
 	i = 0;
 	this->ig_t[0] = 0;
 	for(k=0; k<n; k++)
@@ -749,7 +771,7 @@ int T_Mapping_Vec::Build_T_Matrix()
 		this->ig_t[k+1] = i;
 	}
 
-	// удаляем s_t
+	// delete s_t
 	for(i=0;i<n;i++)
 	{
 		long size;
@@ -777,8 +799,7 @@ int T_Mapping_Vec::Build_T_Matrix()
 	return 0;
 }
 //-----------------------------------------------------------------
-// строит цепочку номеров рёбер, необходимых для вычисления 
-// последующих ненулевых компонент столбца j
+// builds a chain of edge numbers needed to calculate subsequent non-zero components of column j
 //-----------------------------------------------------------------
 Btree* T_Mapping_Vec::Build_Sequence(long e, double value)
 {
@@ -787,8 +808,7 @@ Btree* T_Mapping_Vec::Build_Sequence(long e, double value)
 	long n;
 	double new_val;
 	
-	n = ig_s[e+1] - ig_s[e]; // число функций, принимающих ненулевые значения
-	// в ребре с глобальным номером e
+	n = ig_s[e+1] - ig_s[e]; //number of functions taking nonzero values in the edge with global number e
 
 	d = new Btree(e, value);
 	if(d == 0)
@@ -819,7 +839,7 @@ Btree* T_Mapping_Vec::Build_Sequence(long e, double value)
 	}
 }
 //------------------------------------------------------------------------
-// сформировать вектор весов во всех рёбрах (и в терминальных, и в нетерминальных)
+// generate a vector of weights in all edges (both in terminal and non-terminal)
 //------------------------------------------------------------------------
 int T_Mapping_Vec::CalcValuesAll(double *v3_c, double *v3_all)
 {
@@ -839,8 +859,8 @@ int T_Mapping_Vec::CalcValuesAll(double *v3_c, double *v3_all)
 	return 0;
 }
 //------------------------------------------------------------------------
-// сформировать вектор весов во всех рёбрах (и в терминальных, и в нетерминальных)
-// (дописывает в конец того же вектора)
+// generate a vector of weights in all edges (both in terminal and non-terminal)
+// (appends to the end of the same vector) 
 //------------------------------------------------------------------------
 int T_Mapping_Vec::CalcValuesAll(double *v3)
 {

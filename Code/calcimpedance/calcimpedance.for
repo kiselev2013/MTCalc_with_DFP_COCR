@@ -1,10 +1,44 @@
-      implicit real*4 (a-h,o-z)      
+!=======================================================================
+!   GENERAL REMARKS
+!
+!   This code is freely available under the following conditions:
+!
+!   1) The code is to be used only for non-commercial purposes.
+!   2) No changes and modifications to the code without prior permission of the developer.
+!   3) No forwarding the code to a third party without prior permission of the developer.
+!
+!   This code is a calculation of the MT impedance responses, 
+!   the apparent resistivities, phases, Wiese-Parkinson vectors.
+!
+!   Dr. Marina Persova
+!   Novosibirsk State Technical University   
+!   Novosibirsk, 630073, Russia
+!   mpersova@mail.ru
+!  
+!======================================================================! 
+!======================================================================!
+!======================================================================! 
+!======================================================================! 
+!                    Calcimpedance
+! 
+!    Calculating the MT impedance responses, 
+!    the apparent resistivities, phases, Wiese-Parkinson vectors 
+!
+!    Written by Marina Persova (mpersova@mail.ru)    
+!
+!    Version 1.2 July 31, 2020
+!  
+!======================================================================! 
+
+        implicit real*4 (a-h,o-z)      
 	parameter(idim=20000) 
 	dimension B(4,4), Q(4,4), F(4), U(4), F1(4), OmegaM(idim),
      *Omegat(idim),Ud(4)
 	dimension Xkoor(idim),Ykoor(idim),Zkoor(idim)
 	pi=3.14159265358979323846264
+! vacuum magnetic permeability
 	omu0=4d0*pi*1d-7
+! reading a set of frequencies
 	open(1,file='frec')
 	read(1,*) KolOmega
 	do i=1,KolOmega
@@ -12,18 +46,18 @@
 	OmegaM(KolOmega-i+1)=2d0*pi*Omegat(KolOmega-i+1)
 	enddo
 	close(1)
-
+! calculating the root of a period value
 	open(2,file='sqrt(T)')
 	write(2,*) KolOmega,'   sqrt(T)     nu'
 	do i=KolOmega,1,-1
 	write(2,*) sqrt(1./Omegat(i)),Omegat(i)
-	
 	enddo
 	close(2)
 	
-
 	open(1,file='pointres')
+! reading the number of receiver positions
 	read(1,*) kol
+! opening files with values of components of electric and magnetic fields
 	open(2,file='ex_sx_all_s0')
 	open(3,file='ex_cx_all_s0')
 	open(4,file='ey_sx_all_s0')
@@ -44,24 +78,26 @@
 	open(19,file='hy_cy_all_s0')
 	open(58,file='hz_sy_all_s0')
 	open(59,file='hz_cy_all_s0')
-
+! opening files to write results
 	call openres()
 
-
+! receiver position cycle
 	do m=1,kol
+! reading the coordinates of the positions of the receivers
 	read(1,*) Xkoor(m),Ykoor(m),Zkoor(m)
 
 	do jjj=1,1
-
+! omission of unnecessary information
 	do j1=2,19
 	call readgl(j1)
 	enddo
 	call readgl(58)
 	call readgl(59)
-
+! frequency cycle 
 	do j2=1,KolOmega
 
 	omega=OmegaM(j2)
+! reading the values of components of electric and magnetic fields 
 	read(2,*) x,ex_s0
 	read(3,*) x,ex_c0
 	read(4,*) x,ey_s0
@@ -85,7 +121,7 @@
 
 
 	if (jjj.eq.1) then
-
+! forming a matrix for calculating impedances 
 	B(1,1)=hx_s0
 	B(1,2)=-hx_c0
 	B(1,3)=hy_s0
@@ -102,10 +138,10 @@
 	B(4,2)=hx_s1
 	B(4,3)=hy_c1
 	B(4,4)=hy_s1
-
+! inverse matrix calculation 
 	call  makeQ (B,Q)
 
-
+! calculation of the Zxx and Zxy components of the impedance matrix
 	F(1)=ex_s0
 	F(2)=ex_c0
 	F(3)=ex_s1
@@ -118,7 +154,7 @@
 	enddo
 
 
-
+! calculation of the modulus and phase of the xx-component 
 	Zxx=sqrt(U(1)*U(1)+U(2)*U(2))
 	if (U(1).gt.0..and.U(2).gt.0.) Fxx=atan(U(2)/U(1))
 	if (U(1).lt.0..and.U(2).gt.0.) Fxx=atan(U(2)/U(1))+pi
@@ -130,9 +166,11 @@
 	if (U(1).lt.0..and.abs(U(2)).lt.1e-15) Fxx=pi
 	if (abs(U(1)).lt.1e-15.and.U(2).lt.0.) Fxx=-pi/2.
 
+! writing imaginary and real parts of the xx-component 
 	write(60,rec=KolOmega*m-j2+1) U(1)
 	write(61,rec=KolOmega*m-j2+1) U(2)
 
+! calculation of the modulus and phase of the xy-component 
 	Zxy=sqrt(U(3)*U(3)+U(4)*U(4))
 	if (U(3).gt.0..and.U(4).gt.0.) Fxy=atan(U(4)/U(3))
 	if (U(3).lt.0..and.U(4).gt.0.) Fxy=atan(U(4)/U(3))+pi
@@ -144,11 +182,12 @@
 	if (U(3).lt.0..and.abs(U(4)).lt.1e-15) Fxy=pi
 	if (abs(U(3)).lt.1e-15.and.U(4).lt.0.) Fxy=-pi/2.
 
+! writing imaginary and real parts of the xy-component 
 	write(62,rec=KolOmega*m-j2+1) U(3)
 	write(63,rec=KolOmega*m-j2+1) U(4)
 
 
-
+! calculation of the Zyx and Zyy components of the impedance matrix
 	F(1)=ey_s0
 	F(2)=ey_c0
 	F(3)=ey_s1
@@ -161,7 +200,7 @@
 	enddo
 	enddo
 
-
+! calculation of the modulus and phase of the yx-component 
 	Zyx=sqrt(U(1)*U(1)+U(2)*U(2))
 	if (U(1).gt.0..and.U(2).gt.0.) Fyx=atan(U(2)/U(1))
 	if (U(1).lt.0..and.U(2).gt.0.) Fyx=atan(U(2)/U(1))+pi
@@ -173,11 +212,12 @@
 	if (U(1).lt.0..and.abs(U(2)).lt.1e-15) Fyx=pi
 	if (abs(U(1)).lt.1e-15.and.U(2).lt.0.) Fyx=-pi/2.
 
+! writing imaginary and real parts of the yx-component 
 	write(64,rec=KolOmega*m-j2+1) U(1)
 	write(65,rec=KolOmega*m-j2+1) U(2)
 
 
-
+! calculation of the modulus and phase of the yy-component 
 	Zyy=sqrt(U(3)*U(3)+U(4)*U(4))
 	if (U(3).gt.0..and.U(4).gt.0.) Fyy=atan(U(4)/U(3))
 	if (U(3).lt.0..and.U(4).gt.0.) Fyy=atan(U(4)/U(3))+pi
@@ -189,10 +229,11 @@
 	if (U(3).lt.0..and.abs(U(4)).lt.1e-15) Fyy=pi
 	if (abs(U(3)).lt.1e-15.and.U(4).lt.0.) Fyy=-pi/2.
 
+! writing imaginary and real parts of the yy-component 
 	write(66,rec=KolOmega*m-j2+1) U(3)
 	write(67,rec=KolOmega*m-j2+1) U(4)
 
-
+! writing modules and phases of impedances
 	write(20,rec=KolOmega*m-j2+1) Zxx
 	write(21,rec=KolOmega*m-j2+1) -Fxx*180/pi
 	write(22,rec=KolOmega*m-j2+1) Zxy
@@ -202,7 +243,7 @@
 	write(26,rec=KolOmega*m-j2+1) Zyy
 	write(27,rec=KolOmega*m-j2+1) -Fyy*180/pi
 
-
+! writing apparent resistivity and phases
 	write(32,rec=KolOmega*m-j2+1) Zxx*Zxx/(omu0*omega)
 	write(33,rec=KolOmega*m-j2+1) -2.*Fxx*180/pi
 	write(34,rec=KolOmega*m-j2+1) Zxy*Zxy/(omu0*omega)
@@ -215,7 +256,7 @@
 
 
 
-c рассчет эффективных значений
+! calculating effective apparent resistivity
 	zeff1d=Ud(1)*U(3)-Ud(2)*U(4)
 	zeff1m=Ud(1)*U(4)+Ud(2)*U(3)
 
@@ -231,19 +272,13 @@ c рассчет эффективных значений
 	if (zefffd.lt.0..and.zefffm.lt.0.) zfi=atan(zefffm/zefffd)-pi
 	if (zefffd.gt.0..and.zefffm.lt.0.) zfi=atan(zefffm/zefffd)
 	zfi=zfi/2
-
+! writing effective apparent resistivity and phase
 	write(40,rec=KolOmega*m-j2+1) Zmod*Zmod/(omu0*omega)
 	write(41,rec=KolOmega*m-j2+1) -2.*zfi*180/pi
 	
 
 
-c матрица Визе-Паркинсона
-
-	if (m.eq.1108) then
-	rrr=1
-	endif
-
-
+! calculating components of Wiese-Parkinson vectors
 	F(1)=hz_s0
 	F(2)=hz_c0
 	F(3)=hz_s1
@@ -255,7 +290,7 @@ c матрица Визе-Паркинсона
 	enddo
 	enddo
 
-
+! calculation of the modulus and phase of the zx-component 
 	Wzx=sqrt(U(1)*U(1)+U(2)*U(2))
 	if (U(1).gt.0..and.U(2).gt.0.) WFzx=atan(U(2)/U(1))
 	if (U(1).lt.0..and.U(2).gt.0.) WFzx=atan(U(2)/U(1))+pi
@@ -267,6 +302,7 @@ c матрица Визе-Паркинсона
 	if (U(1).lt.0..and.abs(U(2)).lt.1e-15) WFzx=pi
 	if (abs(U(1)).lt.1e-15.and.U(2).lt.0.) WFzx=-pi/2.
 
+! calculation of the modulus and phase of the zy-component 
 	Wzy=sqrt(U(3)*U(3)+U(4)*U(4))
 	if (U(3).gt.0..and.U(4).gt.0.) WFzy=atan(U(4)/U(3))
 	if (U(3).lt.0..and.U(4).gt.0.) WFzy=atan(U(4)/U(3))+pi
@@ -277,14 +313,12 @@ c матрица Визе-Паркинсона
 	if (abs(U(3)).lt.1e-15.and.U(4).gt.0.) WFzy=pi/2.
 	if (U(3).lt.0..and.abs(U(4)).lt.1e-15) WFzy=pi
 	if (abs(U(3)).lt.1e-15.and.U(4).lt.0.) WFzy=-pi/2.
-
+! writing imaginary and real parts of components of Wiese-Parkinson vectors
 	write(68,rec=KolOmega*m-j2+1) U(1)
 	write(69,rec=KolOmega*m-j2+1) U(2)
 	write(70,rec=KolOmega*m-j2+1) U(3)
 	write(71,rec=KolOmega*m-j2+1) U(4)
-
-
-
+! writing modules and phases of components of Wiese-Parkinson vectors
 	write(28,rec=KolOmega*m-j2+1) Wzx
 	write(29,rec=KolOmega*m-j2+1) -WFzx*180./pi
 	write(30,rec=KolOmega*m-j2+1) Wzy
@@ -297,8 +331,9 @@ c матрица Визе-Паркинсона
 	enddo
 
 	enddo
-c
-c
+!
+!
+! closing files with results
 111	call closeres()
 
 	end
@@ -307,11 +342,12 @@ C
 C
 
 C
-C
+! inverse matrix calculation
       subroutine makeQ (B,Q)
       implicit real*4 (a-h,o-z)      
       dimension B(4,4), Q(4,4), bminor(3,3)
       fdet=0d0
+! matrix determinant calculation
       call determinan(B,fdet)
       do 13 i=1,4
       do 14 j=1,4
@@ -347,7 +383,8 @@ c
      *bm(1,2)*bm(2,1)*bm(3,3)-bm(1,1)*bm(2,3)*bm(3,2)
       return
       end
-c
+!
+! matrix determinant calculation
       subroutine determinan(B,fdet)
       implicit real*4 (a-h,o-z)      
       dimension B(4,4),bminor(3,3),Q(4,4)
@@ -377,18 +414,19 @@ c
    14 continue
       return
       end
-c
-c
-c
+!
+!
+! omission of unnecessary information
 	subroutine readgl(j)
       implicit real*4 (a-h,o-z)      
 	do k=1,6
 	read(j,*)
 	enddo
 	end
-c
-c
+!
+! opening files to write results
 	subroutine openres()
+! modules and phases of impedances and Wiese-Parkinson vectors
 	open(20,file='Zxx',access='direct',recl=4)
 	open(21,file='Fxx',access='direct',recl=4)
 	open(22,file='Zxy',access='direct',recl=4)
@@ -401,7 +439,7 @@ c
 	open(29,file='WFzx',access='direct',recl=4)
 	open(30,file='Wzy',access='direct',recl=4)
 	open(31,file='WFzy',access='direct',recl=4)
-
+! apparent resistivity and phases
 	open(32,file='Rxx',access='direct',recl=4)
 	open(33,file='Fixx',access='direct',recl=4)
 	open(34,file='Rxy',access='direct',recl=4)
@@ -412,9 +450,7 @@ c
 	open(39,file='Fiyy',access='direct',recl=4)
 	open(40,file='Reff',access='direct',recl=4)
 	open(41,file='Fieff',access='direct',recl=4)
-
-
-
+! imaginary and real parts of the impedance components and Wiese-Parkinson vectors
 	open(60,file='ZxxRe',access='direct',recl=4)
 	open(61,file='ZxxIm',access='direct',recl=4)
 	open(62,file='ZxyRe',access='direct',recl=4)
@@ -427,13 +463,10 @@ c
 	open(69,file='WzxIm',access='direct',recl=4)
 	open(70,file='WzyRe',access='direct',recl=4)
 	open(71,file='WzyIm',access='direct',recl=4)
-
-
-
 	return
 	end
 
-c
+! closing files with results
 	subroutine closeres()
 	do j=20,39
 	close(j)

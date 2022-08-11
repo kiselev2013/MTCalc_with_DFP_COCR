@@ -1,3 +1,23 @@
+/**                                                                                        
+ * GENERAL REMARKS                                                                         
+ *                                                                                         
+ *  This code is freely available under the following conditions:                          
+ *                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                            
+ *  2) No changes and modifications to the code without prior permission of the developer. 
+ *  3) No forwarding the code to a third party without prior permission of the developer.  
+ *                                                                                         
+ *  			MTCalc_with_DFP_COCR                                               
+ *  1D mesh generator     
+ *                                                                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                      
+ *  Novosibirsk State Technical University,                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                      
+ *  p_domnikov@mail.ru                                                                     
+ *  Version 1.2 October 23, 2020                                                          
+*/                                                                                         
+
+
 #include "stdafx.h"
 #include "mesh_1d_mtz.h"
 #include "in_out.h"
@@ -35,7 +55,7 @@ int Mesh_1d_mtz::Read_1d_data_for_3d_problem()
 	}
 	fscanf(fp, "%ld", &n_layers);
 
-	n_materials = n_layers + 1 ; // первым в файлах mu3d, sig3d идёт воздух
+	n_materials = n_layers + 1 ; // air
 
 	if((layers = new double[n_layers+1])==0) Memory_allocation_error("layers", "Mesh_1d_mtz::Read_1d_data_for_3d_problem");
 
@@ -83,14 +103,14 @@ void Mesh_1d_mtz::Gen_1d_mesh()
 
 	x = x0 = X1_1D;
 	step = STEP0;
-	n_points = 0; // всего узлов
+	n_points = 0; 
 
 	if((nodes_in_layer = new long[n_layers])==0) Memory_allocation_error("nodes_in_layer", "Mesh_1d_mtz::Gen_1d_mesh");
 
 	for(i=0; i<n_layers; i++)
 		nodes_in_layer[i] = 0;
 
-	// сначала определяем сколько узлов будет в каждом слое
+	// first determine how many nodes will be in each layer
 	for(i=0; i<n_layers; i++)
 	{
 		while(true)
@@ -103,17 +123,17 @@ void Mesh_1d_mtz::Gen_1d_mesh()
 		}
 	}
 
-	// всего узлов
+	// total number of nodes
 	for(i=0; i<n_layers; i++)
 		n_points += nodes_in_layer[i];
-	n_points += n_layers + 1; // плюс узлы на границах разделов слоев
+	n_points += n_layers + 1; // add nodes at layer interfaces
 
 	n_elem = n_points - 1;
 	if((coords = new double[n_points])==0) Memory_allocation_error("coords", "Mesh_1d_mtz::Gen_1d_mesh");
 
 	if((nvkat = new long[n_elem])==0) Memory_allocation_error("nvkat", "Mesh_1d_mtz::Gen_1d_mesh");
 
-	// определяем координаты узлов конечных элементов
+	// determine the coordinates of the finite element nodes
 	x = x0 = X1_1D;
 	step = STEP0;
 	k = 0;

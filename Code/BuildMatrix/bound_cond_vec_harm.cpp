@@ -1,5 +1,29 @@
+/**                                                                                        
+ * GENERAL REMARKS                                                                        
+ *                                                                                        
+ *  This code is freely available under the following conditions:                         
+ *                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                           
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer. 
+ *                                                                                        
+ *              MTCalc_with_DFP_COCR                                                      
+ * The file bound_cond_vec_harm.cpp contains functions of the class "Bound_cond_vec_harm"                            
+ *  for imposing the boundary conditions in the 3D vector FEM time-harmonic global matrix and right hand side vector  
+ *  in the case of both single (A) and coupled potentials (AV)                                                                                         
+ *                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                     
+ *  Novosibirsk State Technical University,                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                     
+ *  p_domnikov@mail.ru                                                                    
+ *  Version 1.2 January 11, 2021                                                          
+*/                                                                                        
+
+
 #include "stdafx.h"
 #include "bound_cond_vec_harm.h"
+//-----------------------------------------------------------------------------
+// Constructor for the class Bound_cond_vec_harm (single potentials A-V)
 //-----------------------------------------------------------------------------
 Bound_cond_vec_harm::Bound_cond_vec_harm(long n_nodes, long n_edges, long n_bound_nodes,
 						   long *bound_nodes,  long (*edges)[2], long n_elem)
@@ -15,6 +39,8 @@ Bound_cond_vec_harm::Bound_cond_vec_harm(long n_nodes, long n_edges, long n_boun
 
 	MakeListBoundsBlocks();
 }
+//-----------------------------------------------------------------------------
+// Constructor for the class Bound_cond_vec_harm (coupled potentials A-V)
 //-----------------------------------------------------------------------------
 Bound_cond_vec_harm::Bound_cond_vec_harm(long n_nodes, long n_nodes_c, long n_edges, long n_edges_c, long n_bound_nodes,
 										 long *bound_nodes, long (*edges)[2], long *nded, long *nded_type, long *nvkat, 
@@ -41,19 +67,23 @@ Bound_cond_vec_harm::Bound_cond_vec_harm(long n_nodes, long n_nodes_c, long n_ed
 
 	MakeListBoundsBlocks();
 }
-//------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+// Desstructor for the class Bound_cond_vec_harm
+//-----------------------------------------------------------------------------
 Bound_cond_vec_harm::~Bound_cond_vec_harm()
 {
 	if(isBlockBound) {delete [] isBlockBound; isBlockBound=NULL;}
 	if(m_bound) {delete [] m_bound; m_bound=NULL;}
 }
 //------------------------------------------------------------------------
+// Setting the flags if the boundary condition is imposed to nodes and edges
+//------------------------------------------------------------------------
 void Bound_cond_vec_harm::MakeListBoundsBlocks()
 {
 	long i;
 	bool *is_node_bound=NULL;
 
-	// заполняем is_node_bound
+	// fill the is_node_bound[]
 	if((is_node_bound = new bool[n_nodes])==0) 
 		Memory_allocation_error("is_node_bound","Bound_cond_vec_harm::Make_list_of_bound_edges_harm");
 
@@ -63,7 +93,7 @@ void Bound_cond_vec_harm::MakeListBoundsBlocks()
 	for(i=0; i<n_bound_nodes; i++)
 		is_node_bound[bound_nodes[i]] = true;
 
-	// заполняем isBlockBound
+	// fill the isBlockBound[]
 	if((isBlockBound = new bool[n_edges])==0)
 		Memory_allocation_error("isBlockBound","Bound_cond_vec_harm::Make_list_of_bound_edges_harm");;
 
@@ -81,13 +111,13 @@ void Bound_cond_vec_harm::FormListM_bound()
 {
 	m_bound = new bool[unk_c];
 
+	// calculating the number of boundary edges
 	n_bound_edges = 0;
 	for(long i = 0; i < n_edges; i++)
 		if(isBlockBound[i]) n_bound_edges++;
 
 	for(long ik = 0; ik < unk_c; ik++) m_bound[ik] = true;
 
-	// обнуляем  значения во всех узловых функциях в воздухе
 	for(long ielem = 0; ielem < n_elem; ielem++)
 	{
 		if(true)
@@ -112,7 +142,7 @@ void Bound_cond_vec_harm::FormListM_bound()
 			}
 		}
 	}
-	// обнуляем значения в ребрах на границе
+
 	for(long iedg = 0; iedg < n_edges; iedg++)
 	{
 		if(isBlockBound[iedg])
@@ -133,7 +163,7 @@ void Bound_cond_vec_harm::FormListM_bound()
 			}
 		}
 	}
-	// обнуляем значения в узлах на границе
+
 	for(long inode = 0; inode < n_bound_nodes; inode++)
 	{
 		if(bound_nodes[inode] < n_nodes_c)
@@ -152,6 +182,8 @@ void Bound_cond_vec_harm::FormListM_bound()
 		}
 	}
 }
+//------------------------------------------------------------------------
+// Imposing the homogenious Dirichlet boundary conditions for the coupled potentials A-V
 //------------------------------------------------------------------------
 void Bound_cond_vec_harm::SetHomogenDirichletCond_AV(long *ig, long *jg, long *idi, long *ijg,  
 													 double *di, double *gg, double *pr)
@@ -223,8 +255,10 @@ void Bound_cond_vec_harm::SetHomogenDirichletCond_AV(long *ig, long *jg, long *i
 	}
 }
 //------------------------------------------------------------------------
+// Imposing the homogenious Dirichlet boundary conditions for the single potential A
+//------------------------------------------------------------------------
 void Bound_cond_vec_harm::SetHomogenDirichletCond(long *ig, long *jg, long *idi, long *ijg,  
-												  double *di, double *gg, double *pr)
+	double *di, double *gg, double *pr)
 {
 	long i, j, k, adr;
 	long size;
@@ -235,13 +269,13 @@ void Bound_cond_vec_harm::SetHomogenDirichletCond(long *ig, long *jg, long *idi,
 	{
 		if (isBlockBound[i])
 		{
-			//di
+			// diagonal elements processing
 			di[idi[i]] = 1.0;
 			size = idi[i+1] - idi[i];
 			if(size==2)
 				di[idi[i]+1] = 0.0;
 
-			//gg
+			// non-diagonal elements processing
 			for (j=ig[i]; j<=ig[i+1]-1; j++)
 			{
 				k = jg[j];
@@ -252,11 +286,11 @@ void Bound_cond_vec_harm::SetHomogenDirichletCond(long *ig, long *jg, long *idi,
 					gg[adr+1] = 0.0;
 			}
 
-			//pr
+			// right hand side
 			pr[i*2] = pr[i*2+1] = 0.0;
-		}//if
+		}// end if
 
-		//для симметризации
+		// symmetrization
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -268,7 +302,7 @@ void Bound_cond_vec_harm::SetHomogenDirichletCond(long *ig, long *jg, long *idi,
 				if(size==2)
 					gg[adr+1] = 0.0;
 			}
-		}//j
-	}//i
+		}// end j
+	}// end i
 }
 //------------------------------------------------------------------------

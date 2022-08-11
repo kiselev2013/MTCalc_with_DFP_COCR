@@ -1,21 +1,37 @@
+/**
+ *  This code is freely available under the following conditions:
+ *
+ *  1) The code is to be used only for non-commercial purposes.
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer.
+ *
+ *
+ * The file contains
+ * 1. Regular parallelepiped finite element mesh building functions using given settings
+ * 2. Functions for writing mesh files, settings and task parameters files needed for calculation
+ *
+ *  Written by Ph.D. Dmitry S. Kiselev
+ *  Novosibirsk State Technical University,
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia
+ *  harlequin_00@mail.ru
+ *  Version 1.1 July, 2021
+*/
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <algorithm>
 #include <vector>
 #include <map>
 #include <set>
-#include <tuple>
 #include "BasicOperations.h"
 #include <chrono>
 
-bool help = false;
-bool noLayers = false;
-bool writeForGlass = false;
-bool writeReferentMeshForGlass = false;
-int extraRefinementStep = 1;
+// Program start time
 std::chrono::high_resolution_clock::time_point tProgramStart;
 
+// Gate for determining if materials properties are equal or not
 #define MaterialEqualEps 1e-7
+
+// Types of material properties values
 enum PhysicalValueType
 {
 	Constant,
@@ -24,6 +40,8 @@ enum PhysicalValueType
 	Table,
 	Curve
 };
+
+// Names of material properties
 enum PhysicalValueName
 {
 	SigmaN,
@@ -32,11 +50,14 @@ enum PhysicalValueName
 	Eps,
 	Mu
 };
+
+// Material property class
 class PhysicalValue
 {
 public:
 	PhysicalValueType valueType;
 	double constantValue;
+
 	PhysicalValue::PhysicalValue()
 	{
 		valueType = PhysicalValueType::Constant;
@@ -48,110 +69,7 @@ public:
 		constantValue = value.constantValue;
 	}
 
-	void PhysicalValue::SetValueType(PhysicalValueType value)
-	{
-		valueType = value;
-	}
-	int PhysicalValue::GetValueType()
-	{
-		return valueType;
-	}
-	void PhysicalValue::SetConstantValue(double value)
-	{
-		constantValue = value;
-	}
-	double PhysicalValue::GetConstantValue()
-	{
-		return constantValue;
-	}
-
-	void PhysicalValue::AddConstToConst(double value)
-	{
-		constantValue += value;
-	}
-	void PhysicalValue::Add(PhysicalValue &value)
-	{
-		switch (valueType)
-		{
-		case PhysicalValueType::Constant:
-			switch (value.valueType)
-			{
-			case PhysicalValueType::Constant:
-				AddConstToConst(value.constantValue);
-				break;
-			case PhysicalValueType::Vector:
-				break;
-			case PhysicalValueType::Tensor:
-				break;
-			case PhysicalValueType::Table:
-				break;
-			}
-			break;
-		case PhysicalValueType::Vector:
-			break;
-		case PhysicalValueType::Tensor:
-			break;
-		case PhysicalValueType::Table:
-			break;
-		}
-	}
-	void PhysicalValue::Scale(double c)
-	{
-		switch (valueType)
-		{
-		case PhysicalValueType::Constant:
-			constantValue *= c;
-			break;
-		case PhysicalValueType::Vector:
-			break;
-		case PhysicalValueType::Tensor:
-			break;
-		case PhysicalValueType::Table:
-			break;
-		}
-	}
-	void PhysicalValue::Reset()
-	{
-		switch (valueType)
-		{
-		case PhysicalValueType::Constant:
-			constantValue = 0.0;
-			break;
-		case PhysicalValueType::Vector:
-			break;
-		case PhysicalValueType::Tensor:
-			break;
-		case PhysicalValueType::Table:
-			break;
-		}
-	}
-	double PhysicalValue::DifferenceCriteria(PhysicalValue &value)
-	{
-		switch (valueType)
-		{
-		case PhysicalValueType::Constant:
-			switch (value.valueType)
-			{
-			case PhysicalValueType::Constant:
-				return fabs(constantValue - value.constantValue);
-			case PhysicalValueType::Vector:
-				break;
-			case PhysicalValueType::Tensor:
-				break;
-			case PhysicalValueType::Table:
-				break;
-			}
-			break;
-		case PhysicalValueType::Vector:
-			break;
-		case PhysicalValueType::Tensor:
-			break;
-		case PhysicalValueType::Table:
-			break;
-		}
-
-		return 0;
-	}
+	// Check if two constant values are equal
 	bool ConstantEqual(double c1, double c2)
 	{
 		if (fabs(c1) < 1e-30 && fabs(c2) < 1e-30)
@@ -160,6 +78,8 @@ public:
 			return true;
 		return false;
 	}
+
+	// Check if two property value and this are equal
 	bool PhysicalValue::Equal(PhysicalValue &value, bool compareTensors = false)
 	{
 		if (value.valueType != valueType)
@@ -182,65 +102,19 @@ public:
 		return false;
 	}
 
-	int PhysicalValue::ReadFromStream(FILE *stream)
-	{
-		char buf[2048];
-
-		try
-		{
-			valueType = PhysicalValueType::Constant;
-			fscanf(stream, "%s", buf);
-			if (strcmp(buf, "Constant") == 0)
-				valueType = PhysicalValueType::Constant;
-			else if (strcmp(buf, "Vector") == 0)
-				valueType = PhysicalValueType::Vector;
-			else if (strcmp(buf, "Tensor") == 0)
-				valueType = PhysicalValueType::Tensor;
-			else if (strcmp(buf, "Table") == 0)
-				valueType = PhysicalValueType::Table;
-			else if (strcmp(buf, "Curve") == 0)
-				valueType = PhysicalValueType::Curve;
-
-			switch (valueType)
-			{
-			case PhysicalValueType::Constant:
-				if (fscanf(stream, "%lf", &constantValue) != 1) return 1;
-				break;
-			case PhysicalValueType::Vector:
-				break;
-			case PhysicalValueType::Tensor:
-				break;
-			case PhysicalValueType::Table:
-				break;
-			case PhysicalValueType::Curve:
-				break;
-			}
-
-
-			return 0;
-		}
-		catch (exception ex)
-		{
-			return 1;
-		}
-	}
 };
 
+// Material class
 class Material
 {
 public:
+
+	// Material properties:
 	PhysicalValue SigmaH;
 	PhysicalValue SigmaV;
 	PhysicalValue SigmaN;
 	PhysicalValue Eps;
 	PhysicalValue Mu;
-	PhysicalValue Alpha;
-	PhysicalValue Beta;
-	PhysicalValue Tau;
-	PhysicalValue C;
-	PhysicalValue Dep;
-	vector<int> wkDomainsSelf;
-	vector<int> wkDomainsExternal;
 
 	Material::Material()
 	{
@@ -250,10 +124,9 @@ public:
 	Material::Material(const Material &material)
 	{
 		CopyPhysicals(material);
-		this->wkDomainsExternal = material.wkDomainsExternal;
-		this->wkDomainsSelf = material.wkDomainsSelf;
 	}
 
+	// Copy material properties from another material to this
 	void Material::CopyPhysicals(const Material &material)
 	{
 		this->SigmaH = material.SigmaH;
@@ -261,37 +134,9 @@ public:
 		this->SigmaN = material.SigmaN;
 		this->Eps = material.Eps;
 		this->Mu = material.Mu;
-		this->Alpha = material.Alpha;
-		this->Beta = material.Beta;
-		this->Tau = material.Tau;
-		this->C = material.C;
-		this->Dep = material.Dep;
 	}
 
-	void Material::Add(Material &material)
-	{
-		SigmaH.Add(material.SigmaH);
-		SigmaV.Add(material.SigmaV);
-		Eps.Add(material.Eps);
-		Mu.Add(material.Mu);
-		Alpha.Add(material.Alpha);
-		Beta.Add(material.Beta);
-		Tau.Add(material.Tau);
-		C.Add(material.C);
-		Dep.Add(material.Dep);
-	}
-	void Material::Scale(double c)
-	{
-		SigmaH.Scale(c);
-		SigmaV.Scale(c);
-		Eps.Scale(c);
-		Mu.Scale(c);
-		Alpha.Scale(c);
-		Beta.Scale(c);
-		Tau.Scale(c);
-		C.Scale(c);
-		Dep.Scale(c);
-	}
+	// Check if another material is equal to this
 	bool Material::Equal(Material &material)
 	{
 		if (!material.SigmaH.Equal(SigmaH)) return false;
@@ -299,59 +144,8 @@ public:
 		if (!material.SigmaN.Equal(SigmaN)) return false;
 		if (!material.Eps.Equal(Eps)) return false;
 		if (!material.Mu.Equal(Mu)) return false;
-		if (!material.Alpha.Equal(Alpha)) return false;
-		if (!material.Beta.Equal(Beta)) return false;
-		if (!material.Tau.Equal(Tau)) return false;
-		if (!material.C.Equal(C)) return false;
-		if (!material.Dep.Equal(Dep)) return false;
 
 		return true;
-	}
-	int Material::ReadFromStream(FILE *stream)
-	{
-		try
-		{
-			if (SigmaH.ReadFromStream(stream) != 0) return 1; SigmaH.constantValue = 1.0 / SigmaH.constantValue;
-			if (SigmaV.ReadFromStream(stream) != 0) return 1; SigmaV.constantValue = 1.0 / SigmaV.constantValue;
-			if (Eps.ReadFromStream(stream) != 0) return 1;
-			if (Mu.ReadFromStream(stream) != 0) return 1;
-			if (Alpha.ReadFromStream(stream) != 0) return 1;
-			if (Beta.ReadFromStream(stream) != 0) return 1;
-			if (Tau.ReadFromStream(stream) != 0) return 1;
-			if (C.ReadFromStream(stream) != 0) return 1;
-			if (Dep.ReadFromStream(stream) != 0) return 1;
-
-			SigmaN = SigmaH;
-
-			return 0;
-		}
-		catch (exception ex)
-		{
-			return 1;
-		}
-	}
-	int Material::ReadFromMaterialParameters(FILE *stream)
-	{
-		try
-		{
-			int tmpi;
-			if (fscanf(stream, "%lf", &SigmaH.constantValue) != 1) return 1; SigmaH.valueType = PhysicalValueType::Constant;
-			if (fscanf(stream, "%lf", &SigmaV.constantValue) != 1) return 1; SigmaV.valueType = PhysicalValueType::Constant;
-			if (fscanf(stream, "%lf", &Alpha.constantValue) != 1) return 1; Alpha.valueType = Constant;
-			if (fscanf(stream, "%lf", &Tau.constantValue) != 1) return 1; Tau.valueType = Constant;
-			if (fscanf(stream, "%lf", &Beta.constantValue) != 1) return 1; Beta.valueType = PhysicalValueType::Constant;
-			if (fscanf(stream, "%lf", &C.constantValue) != 1) return 1; C.valueType = PhysicalValueType::Constant;
-			for (size_t i = 0; i < 7; i++)
-				if (fscanf(stream, "%d", &tmpi) != 1) return 1;
-			if (fscanf(stream, "%lf", &Dep.constantValue) != 1) return 1; Dep.valueType = PhysicalValueType::Constant;
-			SigmaN = SigmaH;
-
-			return 0;
-		}
-		catch (exception ex)
-		{
-			return 1;
-		}
 	}
 
 	PhysicalValue& Material::GetValue(PhysicalValueName name)
@@ -378,31 +172,33 @@ template <typename T> int sgn(T val) {
 }
 using namespace std;
 
+// Common settings class
 class Settings
 {
 public:
-	double steps[3];
-	double sparse[3];
-	double farBound[3];
-	double gapFromReceivers[3];
-	double eps = 0.1;
-	int currentDirection = 1;
-	double frequency;
-	int threadsCount = 1;
-	double SLAESolutionEps = 1e-4;
-	int maxIterationsCount = 10000;
+	double steps[3]; // Mesh initial steps
+	double sparse[3]; // Sparce coefficient
+	double farBound[3]; // Distance from receivers bounding box+gap to the boundary of the calculation domain
+	double gapFromReceivers[3]; // Gap between receivers bounding box and sparced mesh area
+	double eps = 0.1; // Gate for determining if coordinate lines are equal
+	int currentDirection = 1; // Current direction for current calculation
+	double frequency; // Frequency for current calculation
+	int threadsCount = 1;  // Threads count for parallel calculation
+	double SLAESolutionEps = 1e-4;  // relative residual for determining if SLAE solving is finished
+	int maxIterationsCount = 10000; // Maximum iterations when solving SLAE
 
 	Settings() { }
 };
 
+// Box class for different purposes
 template <typename T>
 class GeoBox
 {
 public:
 
-	T coordinates[6];
-	int material = 0;
-	Material materialValue;
+	T coordinates[6]; // x0, x1, y0, y1, z0, z1
+	int material = 0; // Material number
+	Material materialValue; // Matrial value
 
 	GeoBox()
 	{
@@ -410,15 +206,16 @@ public:
 	}
 };
 
+// Layer class
 template <typename T>
 class GeoLayer
 {
 public:
 
-	T top;
-	T bottom;
-	int material = 0;
-	Material materialValue;
+	T top; // Upper layer coordinate
+	T bottom; // Lower layer coordinate
+	int material = 0;  // Material number
+	Material materialValue; // Material value
 
 	GeoLayer()
 	{
@@ -426,11 +223,12 @@ public:
 	}
 };
 
+// Receiver class
 class Receiver
 {
 public:
 
-	double coordinates[3];
+	double coordinates[3]; // x, y, z
 
 	Receiver()
 	{
@@ -439,6 +237,7 @@ public:
 };
 
 
+// Find value in v
 int BinarySearchInVectorSorted(vector<double> &v, double value)
 {
 	int b[2] = { 0, v.size() - 1 };
@@ -465,6 +264,7 @@ int BinarySearchInVectorSorted(vector<double> &v, double value)
 	return b[1];
 }
 
+// Build 1D mesh within bounds with constant step
 int Build1DUniformMesh(double step, double *bounds, vector<double> &mesh)
 {
 	try
@@ -492,13 +292,15 @@ int Build1DUniformMesh(double step, double *bounds, vector<double> &mesh)
 		return 1;
 	}
 }
-int Build1DTwoSideSparsedMesh(double step, double sparse, int direction, double *bounds, vector<double> &mesh)
+
+// Build 1D mesh within bounds with increasing by sparce step. Direction > 0 is from left to right, otherwise - from right to left
+int Build1DSparsedMesh(double step, double sparse, int direction, double *bounds, vector<double> &mesh)
 {
 	try
 	{
-		if (bounds[1] < bounds[0]) { write_to_log("Error : Build1DTwoSideSparsedMesh : Mesh building bounds are inadequate\n"); return 1; }
-		if (step < 0) { write_to_log("Error : Build1DTwoSideSparsedMesh : Step is less tha zero\n"); return 1; }
-		if (sparse < 1.0) { write_to_log("Error : Build1DTwoSideSparsedMesh : Sparse coefficient is less tha 1.0\n"); return 1; }
+		if (bounds[1] < bounds[0]) { write_to_log("Error : Build1DSparsedMesh : Mesh building bounds are inadequate\n"); return 1; }
+		if (step < 0) { write_to_log("Error : Build1DSparsedMesh : Step is less tha zero\n"); return 1; }
+		if (sparse < 1.0) { write_to_log("Error : Build1DSparsedMesh : Sparse coefficient is less tha 1.0\n"); return 1; }
 
 		double coord;
 		if (direction > 0)
@@ -532,12 +334,14 @@ int Build1DTwoSideSparsedMesh(double step, double sparse, int direction, double 
 	}
 	catch (exception ex)
 	{
-		write_to_log("Error : Build1DTwoSideSparsedMesh : ");
+		write_to_log("Error : Build1DSparsedMesh : ");
 		write_to_log(ex.what());
 		write_to_log("\n");
 		return 1;
 	}
 }
+
+// Build base 1d mesh using model bounds
 int BuildBaseMesh1D(double step, double sparse, double *modelBounds, vector<double> &mesh)
 {
 	try
@@ -545,8 +349,8 @@ int BuildBaseMesh1D(double step, double sparse, double *modelBounds, vector<doub
 		vector<double> meshL, meshM, meshR;
 
 		if (Build1DUniformMesh(step, modelBounds + 1, meshM) != 0) { write_to_log("Error : BuildBaseMesh1D : Could not build middle uniform mesh\n"); return 1; }
-		if (Build1DTwoSideSparsedMesh(step, sparse, -1, modelBounds + 0, meshL) != 0) { write_to_log("Error : BuildBaseMesh1D : Could not build left mesh\n"); return 1; }
-		if (Build1DTwoSideSparsedMesh(step, sparse,  1, modelBounds + 2, meshR) != 0) { write_to_log("Error : BuildBaseMesh1D : Could not build roght mesh\n"); return 1; }
+		if (Build1DSparsedMesh(step, sparse, -1, modelBounds + 0, meshL) != 0) { write_to_log("Error : BuildBaseMesh1D : Could not build left mesh\n"); return 1; }
+		if (Build1DSparsedMesh(step, sparse,  1, modelBounds + 2, meshR) != 0) { write_to_log("Error : BuildBaseMesh1D : Could not build roght mesh\n"); return 1; }
 
 		mesh.resize(meshL.size() + meshM.size() + meshR.size() - 2);
 
@@ -570,6 +374,8 @@ int BuildBaseMesh1D(double step, double sparse, double *modelBounds, vector<doub
 		return 1;
 	}
 }
+
+// Build base 3d mesh using model bounds
 int BuildBaseMesh3D(Settings &meshSettings, double **modelBounds, vector<double> *mesh)
 {
 	try
@@ -588,6 +394,8 @@ int BuildBaseMesh3D(Settings &meshSettings, double **modelBounds, vector<double>
 		return 1;
 	}
 }
+
+// Build template base 3d mesh using model bounds
 int BuildBaseMesh3DTemplate(double **modelBounds, vector<double> *mesh, vector<double> *meshTemplate)
 {
 	try
@@ -628,6 +436,8 @@ int BuildBaseMesh3DTemplate(double **modelBounds, vector<double> *mesh, vector<d
 		return 1;
 	}
 }
+
+// Align 1D mesh begin and end with bounds 
 int AlignMeshBounds(double *bounds, vector<double> &mesh)
 {
 	try
@@ -650,6 +460,8 @@ int AlignMeshBounds(double *bounds, vector<double> &mesh)
 		return 1;
 	}
 }
+
+// Align 3D mesh begin and end with bounds 
 int AlignMeshBounds(double **modelBounds, vector<double> *mesh)
 {
 	try
@@ -669,6 +481,7 @@ int AlignMeshBounds(double **modelBounds, vector<double> *mesh)
 	}
 }
 
+// Sort coordinates
 int InsertCoordinateIntoSortedArray(vector<double> &arr, double value, double eps)
 {
 	try
@@ -697,6 +510,8 @@ int InsertCoordinateIntoSortedArray(vector<double> &arr, double value, double ep
 		return 1;
 	}
 }
+
+// Create additional mesh lines for objects
 int InsertObjectsIntoMesh(vector<GeoBox<double>> &objects, double eps, vector<double> *mesh)
 {
 	try
@@ -724,6 +539,8 @@ int InsertObjectsIntoMesh(vector<GeoBox<double>> &objects, double eps, vector<do
 		return 1;
 	}
 }
+
+// Create additional mesh lines for layers
 int InsertLayersIntoMesh(vector<GeoLayer<double>> &layers, double eps, vector<double> *mesh)
 {
 	try
@@ -736,7 +553,7 @@ int InsertLayersIntoMesh(vector<GeoLayer<double>> &layers, double eps, vector<do
 				break;
 			if (InsertCoordinateIntoSortedArray(mesh[2], layer->bottom, eps) != 0)
 			{
-				sprintf(buf, "Error : InsertObjectsIntoMesh : Could not insert object %d bound %d into mesh\n", layerNumber, layer->bottom); write_to_log(buf);
+				sprintf(buf, "Error : InsertLayersIntoMesh : Could not insert object %d bound %d into mesh\n", layerNumber, layer->bottom); write_to_log(buf);
 				return 1;
 			}
 		}
@@ -751,11 +568,14 @@ int InsertLayersIntoMesh(vector<GeoLayer<double>> &layers, double eps, vector<do
 	}
 }
 
+// Round double value with decrement
 double RoundDouble_(double value, double decrement)
 {
 	int n = fabs(value / decrement);
 	return value < 0 ? -(n + 1) * decrement : n * decrement;
 }
+
+// Calculate receivers bounding box
 int CalculateReceiversBounds(vector<Receiver> &receivers, Settings &meshSettings, GeoBox<double> &receiversBounds)
 {
 	try
@@ -800,6 +620,8 @@ int CalculateReceiversBounds(vector<Receiver> &receivers, Settings &meshSettings
 	}
 
 }
+
+// Calculate receivers bounding box with rounding
 int CalculateReceiversBounds(vector<Receiver> &receivers, GeoBox<double> &receiversBounds)
 {
 	try
@@ -829,6 +651,8 @@ int CalculateReceiversBounds(vector<Receiver> &receivers, GeoBox<double> &receiv
 	}
 
 }
+
+// Calculatemodel bounding box
 int CalculateModelBounds(vector<Receiver> &receivers, Settings &meshSettings, double **bounds)
 {
 	try
@@ -858,6 +682,7 @@ int CalculateModelBounds(vector<Receiver> &receivers, Settings &meshSettings, do
 	}
 }
 
+// Apply layers materials to mesh
 int SetLayersMaterials(vector<GeoLayer<double>> &layers, vector<Material> &layerMaterials, vector<double> *mesh)
 {
 	try
@@ -890,6 +715,8 @@ int SetLayersMaterials(vector<GeoLayer<double>> &layers, vector<Material> &layer
 		return 1;
 	}
 }
+
+// Apply objects materials to mesh
 int SetObjectsMaterials(vector<GeoBox<double>> &objects, vector<Material> &objectMaterials, vector<double> *mesh)
 {
 	try
@@ -918,6 +745,8 @@ int SetObjectsMaterials(vector<GeoBox<double>> &objects, vector<Material> &objec
 		return 1;
 	}
 }
+
+// Set primary field calculation area metarial parameters
 int SetNormalMaterials(vector<Material> &layerMaterials, vector<Material> &objectMaterials)
 {
 	try
@@ -935,6 +764,8 @@ int SetNormalMaterials(vector<Material> &layerMaterials, vector<Material> &objec
 		return 1;
 	}
 }
+
+// Set material numbers to cells
 int SetMaterialNumbers(vector<Material> &objectMaterials, vector<Material> &layerMaterials, vector<int> &materialNumbers, vector<Material> &uniqueMaterials, vector<double> &meshZ, vector<GeoLayer<double>> &layers, int nxy)
 {
 	vector<bool> done;
@@ -1044,6 +875,8 @@ int SetMaterialNumbers(vector<Material> &objectMaterials, vector<Material> &laye
 		return 1;
 	}
 }
+
+// Set materials to mesh
 int SetMaterials(vector<GeoLayer<double>> &layers, vector<GeoBox<double>> &objects, vector<int> &materialNumbers, vector<double> *mesh, vector<Material> &uniqueMaterials)
 {
 	try
@@ -1067,6 +900,7 @@ int SetMaterials(vector<GeoLayer<double>> &layers, vector<GeoBox<double>> &objec
 	}
 }
 
+// Find edge by nodes
 int FindEdge(int node1, int node2, map<pair<int, int>, int> &edgesToNumbers)
 {
 	static pair<int, int> edge;
@@ -1084,6 +918,8 @@ int FindEdge(int node1, int node2, map<pair<int, int>, int> &edgesToNumbers)
 	else
 		return found->second;
 }
+
+// Colelct mesh edges
 int BuildEdges(vector<double> *mesh, set<pair<int, int>> &edges)
 {
 	try
@@ -1134,6 +970,8 @@ int BuildEdges(vector<double> *mesh, set<pair<int, int>> &edges)
 		return 1;
 	}
 }
+
+// Colelct mesh elements described with edges
 int BuildElementsByEdges(vector<double> *mesh, set<pair<int, int>> &edges, vector<vector<int>> &elementsByEdges)
 {
 	try
@@ -1191,6 +1029,8 @@ int BuildElementsByEdges(vector<double> *mesh, set<pair<int, int>> &edges, vecto
 		return 1;
 	}
 }
+
+// Build mesh for 1D problem
 int Build1DMesh(vector<double> &mesh1D)
 {
 	try
@@ -1217,6 +1057,8 @@ int Build1DMesh(vector<double> &mesh1D)
 		return 1;
 	}
 }
+
+// Get total edges
 int CalculateEdgesCount(vector<double> *mesh)
 {
 	try
@@ -1240,6 +1082,7 @@ int CalculateEdgesCount(vector<double> *mesh)
 	}
 }
 
+// Mesh building procedure
 int BuildMesh(vector<Receiver> &receivers, vector<GeoLayer<double>> &layers, vector<GeoBox<double>> &objects, Settings &meshSettings, vector<double> *meshes1D, vector<double> *meshesTemplate1D, vector<int> &materialNumbers, set<pair<int, int>> &edges, vector<vector<int>> &elementsByEdges, vector<Material> &uniqueMaterials)
 {
 	try
@@ -1269,52 +1112,7 @@ int BuildMesh(vector<Receiver> &receivers, vector<GeoLayer<double>> &layers, vec
 	}
 }
 
-int ReadMObjects(char *file_name, vector<GeoBox<double>> &objects)
-{
-	FILE *file_in = NULL;
-	try
-	{
-		if (!(file_in = fopen(file_name, "r"))) return 1;
-
-		Material newMaterial;
-		GeoBox<double> newObject;
-
-		int objectsCount;
-		fscanf(file_in, "%d", &objectsCount);
-		objects.resize(objectsCount);
-
-		for (int objectIndex = 0; objectIndex < objectsCount; objectIndex++)
-		{
-			fscanf(file_in, "%lf%lf%lf%lf%lf%lf", newObject.coordinates, newObject.coordinates + 2, newObject.coordinates + 4, newObject.coordinates + 1, newObject.coordinates + 3, newObject.coordinates + 5);
-			fscanf(file_in, "%lf%lf%lf%lf%lf%lf%lf", &newMaterial.SigmaH.constantValue, &newMaterial.SigmaV.constantValue, &newMaterial.Dep.constantValue, &newMaterial.Alpha.constantValue, &newMaterial.Tau.constantValue, &newMaterial.Beta.constantValue, &newMaterial.C.constantValue);
-			newMaterial.SigmaH.constantValue = newMaterial.SigmaH.constantValue < 1e-10 ? 1e+10 : 1.0 / newMaterial.SigmaH.constantValue;
-			newMaterial.SigmaV.constantValue = newMaterial.SigmaV.constantValue < 1e-10 ? 1e+10 : 1.0 / newMaterial.SigmaV.constantValue;
-			newMaterial.SigmaN.constantValue = newMaterial.SigmaH.constantValue;
-			newMaterial.SigmaH.valueType = PhysicalValueType::Constant;
-			newMaterial.SigmaV.valueType = PhysicalValueType::Constant;
-			newMaterial.SigmaN.valueType = PhysicalValueType::Constant;
-			newMaterial.Alpha.valueType = PhysicalValueType::Constant;
-			newMaterial.Dep.valueType = PhysicalValueType::Constant;
-			newMaterial.Beta.valueType = PhysicalValueType::Constant;
-			newMaterial.Tau.valueType = PhysicalValueType::Constant;
-			newMaterial.C.valueType = PhysicalValueType::Constant;
-			newObject.materialValue = newMaterial;
-			objects[objectIndex] = newObject;
-		}
-
-		fclose(file_in);
-		return 0;
-	}
-	catch (exception ex)
-	{
-		if (file_in != NULL)
-			fclose(file_in);
-		write_to_log("Error : ReadMObjects : ");
-		write_to_log(ex.what());
-		write_to_log("\n");
-		return 1;
-	}
-}
+// Read objects from file
 int ReadObjects(char *file_name, vector<GeoBox<double>> &objects)
 {
 	FILE *file_in = NULL;
@@ -1334,20 +1132,10 @@ int ReadObjects(char *file_name, vector<GeoBox<double>> &objects)
 			fscanf(file_in, "%lf%lf%lf%lf%lf%lf%lf", newObject.coordinates, newObject.coordinates + 1, newObject.coordinates + 2, newObject.coordinates + 3, newObject.coordinates + 4, newObject.coordinates + 5, &newMaterial.SigmaH.constantValue);
 			newMaterial.SigmaV.constantValue = newMaterial.SigmaH.constantValue;
 			newMaterial.SigmaN.constantValue = newMaterial.SigmaH.constantValue;
-			newMaterial.Dep.constantValue = 1;
-			newMaterial.Alpha.constantValue = 0.0;
-			newMaterial.Tau.constantValue = 0.1;
-			newMaterial.Beta.constantValue = 100;
-			newMaterial.C.constantValue = 0.5;
 			
 			newMaterial.SigmaH.valueType = PhysicalValueType::Constant;
 			newMaterial.SigmaV.valueType = PhysicalValueType::Constant;
 			newMaterial.SigmaN.valueType = PhysicalValueType::Constant;
-			newMaterial.Alpha.valueType = PhysicalValueType::Constant;
-			newMaterial.Dep.valueType = PhysicalValueType::Constant;
-			newMaterial.Beta.valueType = PhysicalValueType::Constant;
-			newMaterial.Tau.valueType = PhysicalValueType::Constant;
-			newMaterial.C.valueType = PhysicalValueType::Constant;
 			newObject.materialValue = newMaterial;
 			objects[objectIndex] = newObject;
 		}
@@ -1365,113 +1153,19 @@ int ReadObjects(char *file_name, vector<GeoBox<double>> &objects)
 		return 1;
 	}
 }
+
+// Create material for air
 void CreateAirMaterial(Material &airMaterial)
 {
-	airMaterial.Dep.constantValue = 1;
-	airMaterial.Alpha.constantValue = 0;
-	airMaterial.Tau.constantValue = 0;
-	airMaterial.Beta.constantValue = 0;
-	airMaterial.C.constantValue = 0;
 	airMaterial.SigmaH.constantValue = 1e-8;
 	airMaterial.SigmaV.constantValue = 1e-8;
 	airMaterial.SigmaN.constantValue = 1e-8;
 	airMaterial.SigmaH.valueType = PhysicalValueType::Constant;
 	airMaterial.SigmaV.valueType = PhysicalValueType::Constant;
 	airMaterial.SigmaN.valueType = PhysicalValueType::Constant;
-	airMaterial.Alpha.valueType = PhysicalValueType::Constant;
-	airMaterial.Dep.valueType = PhysicalValueType::Constant;
-	airMaterial.Beta.valueType = PhysicalValueType::Constant;
-	airMaterial.Tau.valueType = PhysicalValueType::Constant;
-	airMaterial.C.valueType = PhysicalValueType::Constant;
 }
-int ReadMLayers(char *file_name, vector<GeoLayer<double>> &layers)
-{
-	FILE *file_in = NULL;
-	try
-	{
-		int tmpi;
-		double thickness;
-		if (!(file_in = fopen(file_name, "r"))) return 1;
 
-		Material newMaterial;
-		GeoLayer<double> newLayer;
-
-		int layersCount;
-		fscanf(file_in, "%d", &layersCount);
-		layers.resize(layersCount + 2);
-
-		CreateAirMaterial(newMaterial);
-		layers[0].materialValue = newMaterial;
-		layers[0].bottom = 0;
-		layers[0].top = 1e+30;
-		layers[0].material = 0;
-		double z = 0;
-		for (int layerIndex = 0; layerIndex < layersCount; layerIndex++)
-		{
-			fscanf(file_in, "%lf%lf%d", &thickness, &newMaterial.SigmaH.constantValue, &tmpi);
-			newLayer.top = z;
-			z -= thickness;
-			newLayer.bottom = z;
-			fscanf(file_in, "%lf%lf%lf%lf%lf", &newMaterial.Dep.constantValue, &newMaterial.Alpha.constantValue, &newMaterial.Tau.constantValue, &newMaterial.Beta.constantValue, &newMaterial.C.constantValue);
-			newMaterial.SigmaH.constantValue = newMaterial.SigmaH.constantValue < 1e-10 ? 1e+10 : 1.0 / newMaterial.SigmaH.constantValue;
-			newMaterial.SigmaV.constantValue = newMaterial.SigmaV.constantValue < 1e-10 ? 1e+10 : 1.0 / newMaterial.SigmaV.constantValue;
-			newMaterial.SigmaN.constantValue = newMaterial.SigmaH.constantValue;
-			newMaterial.SigmaH.valueType = PhysicalValueType::Constant;
-			newMaterial.SigmaV.valueType = PhysicalValueType::Constant;
-			newMaterial.SigmaN.valueType = PhysicalValueType::Constant;
-			newMaterial.Alpha.valueType = PhysicalValueType::Constant;
-			newMaterial.Dep.valueType = PhysicalValueType::Constant;
-			newMaterial.Beta.valueType = PhysicalValueType::Constant;
-			newMaterial.Tau.valueType = PhysicalValueType::Constant;
-			newMaterial.C.valueType = PhysicalValueType::Constant;
-			newLayer.materialValue = newMaterial;
-			layers[layerIndex + 1] = newLayer;
-		}
-
-		layers.back().top = z;
-		layers.back().bottom = -1e+30;
-		layers.back().materialValue = layers[layers.size() - 2].materialValue;
-
-		fclose(file_in);
-		return 0;
-	}
-	catch (exception ex)
-	{
-		if (file_in != NULL)
-			fclose(file_in);
-		write_to_log("Error : ReadMLayers : ");
-		write_to_log(ex.what());
-		write_to_log("\n");
-		return 1;
-	}
-}
-int ReadLastLayerFromZSig2D(char *file_name, vector<GeoLayer<double>> &layers)
-{
-	FILE *file_in = NULL;
-	try
-	{
-		double z, sigma;
-		int layersCount;
-		if (!(file_in = fopen(file_name, "r"))) return 1;
-
-		fscanf(file_in, "%d%", &layersCount);
-		fscanf(file_in, "%lf%lf", &z, &sigma);
-
-		layers.back().materialValue.SigmaN.constantValue = layers.back().materialValue.SigmaV.constantValue = layers.back().materialValue.SigmaH.constantValue = sigma;
-
-		fclose(file_in);
-		return 0;
-	}
-	catch (exception ex)
-	{
-		if (file_in != NULL)
-			fclose(file_in);
-		write_to_log("Error : ReadMLayers : ");
-		write_to_log(ex.what());
-		write_to_log("\n");
-		return 1;
-	}
-}
+// Read layers from file
 int ReadZSig2D(char *file_name, vector<GeoLayer<double>> &layers)
 {
 	FILE *file_in = NULL;
@@ -1497,22 +1191,12 @@ int ReadZSig2D(char *file_name, vector<GeoLayer<double>> &layers)
 			fscanf(file_in, "%lf%lf", &z, &sigma);
 			newLayer.top = z;
 			newLayer.bottom = layerIndex == 0 ? -1e+30 : z - layers[layers.size() - layerIndex - 2].top;
-			newMaterial.Dep.constantValue = 1;
-			newMaterial.Alpha.constantValue = 0.0;
-			newMaterial.Tau.constantValue = 0.1;
-			newMaterial.Beta.constantValue = 100.0;
-			newMaterial.C.constantValue = 0.5;
 			newMaterial.SigmaH.constantValue = sigma;
 			newMaterial.SigmaV.constantValue = sigma;
 			newMaterial.SigmaN.constantValue = sigma;
 			newMaterial.SigmaH.valueType = PhysicalValueType::Constant;
 			newMaterial.SigmaV.valueType = PhysicalValueType::Constant;
 			newMaterial.SigmaN.valueType = PhysicalValueType::Constant;
-			newMaterial.Alpha.valueType = PhysicalValueType::Constant;
-			newMaterial.Dep.valueType = PhysicalValueType::Constant;
-			newMaterial.Beta.valueType = PhysicalValueType::Constant;
-			newMaterial.Tau.valueType = PhysicalValueType::Constant;
-			newMaterial.C.valueType = PhysicalValueType::Constant;
 			newLayer.materialValue = newMaterial;
 			layers[layers.size() - layerIndex - 1] = newLayer;
 		}
@@ -1530,6 +1214,8 @@ int ReadZSig2D(char *file_name, vector<GeoLayer<double>> &layers)
 		return 1;
 	}
 }
+
+// Read receivers from file
 int ReadReceivers(char *file_name, vector<Receiver> &receivers)
 {
 	FILE *file_in = NULL;
@@ -1562,6 +1248,8 @@ int ReadReceivers(char *file_name, vector<Receiver> &receivers)
 		return 1;
 	}
 }
+
+// Read settings from file
 int ReadSettings(char *file_name, Settings &settings)
 {
 	FILE *file_in = NULL;
@@ -1609,6 +1297,7 @@ int ReadSettings(char *file_name, Settings &settings)
 	}
 }
 
+// Write mesh file with nodes and cells count
 int WriteInftry(char *file_name, int nx, int ny, int nz)
 {
 	FILE *file_out = NULL;
@@ -1653,6 +1342,8 @@ int WriteInftry(char *file_name, int nx, int ny, int nz)
 		return 1;
 	}
 }
+
+// Write mesh nodes coordinates
 int WriteXyz(char *file_name, vector<double> *mesh)
 {
 	FILE *file_out = NULL;
@@ -1693,6 +1384,8 @@ int WriteXyz(char *file_name, vector<double> *mesh)
 		return 1;
 	}
 }
+
+// Write mesh cells described with node numbers
 int WriteNver(char *file_name, int nx, int ny, int nz)
 {
 	FILE *file_out = NULL;
@@ -1752,6 +1445,8 @@ int WriteNver(char *file_name, int nx, int ny, int nz)
 		return 1;
 	}
 }
+
+// Write mesh cells material numbers
 int WriteNvkat(char *file_name, vector<int> &materialNumbers)
 {
 	FILE *file_out = NULL;
@@ -1780,6 +1475,8 @@ int WriteNvkat(char *file_name, vector<int> &materialNumbers)
 		return 1;
 	}
 }
+
+// Get cell (with ix, iy, iz 1D mesh indeces) neighbours
 void GetNeighbours(int nx, int ny, int nz, int ix, int iy, int iz, int cell, int *neighbours)
 {
 	int nxy = (nx-1) * (ny-1);
@@ -1790,6 +1487,8 @@ void GetNeighbours(int nx, int ny, int nz, int ix, int iy, int iz, int cell, int
 	neighbours[2] = iz == 0 ? -1 : 1 + cell - nxy;
 	neighbours[5] = iz == nz - 2 ? -1 : 1 + cell + nxy;
 }
+
+// Write each cell neighbours to file
 int WriteElemNeib(char *file_name, int nx, int ny, int nz)
 {
 	FILE *file_out = NULL;
@@ -1839,6 +1538,8 @@ int WriteElemNeib(char *file_name, int nx, int ny, int nz)
 		return 1;
 	}
 }
+
+// Write material properties to file
 int WriteProperty3D(char *fileName, vector<Material> &materials, PhysicalValueName prop1, PhysicalValueName prop2, bool revert = false)
 {
 	FILE *outputFile = NULL;
@@ -1868,6 +1569,8 @@ int WriteProperty3D(char *fileName, vector<Material> &materials, PhysicalValueNa
 		return 1;
 	}
 }
+
+// Write empty nodal T-Matrix size
 int WriteTSize3DNode(char *fileName, vector<double> *mesh)
 {
 	FILE *outputFile = NULL;
@@ -1901,6 +1604,8 @@ int WriteTSize3DNode(char *fileName, vector<double> *mesh)
 		return 1;
 	}
 }
+
+// Write empty edge T-Matrix size
 int WriteTSize3DEdge(char *fileName, int edgesCount)
 {
 	FILE *outputFile = NULL;
@@ -1924,6 +1629,8 @@ int WriteTSize3DEdge(char *fileName, int edgesCount)
 		return 1;
 	}
 }
+
+// Write 1D meshes to file
 int Write3DMeshRegular(char *fileName, vector<double> *mesh)
 {
 	FILE *outputFile = NULL;
@@ -1964,6 +1671,8 @@ int Write3DMeshRegular(char *fileName, vector<double> *mesh)
 		return 1;
 	}
 }
+
+// Write regular mesh cells flags
 int WriteRegular(char *fileName, int nx, int ny, int nz)
 {
 	FILE *outputFile = NULL;
@@ -1992,6 +1701,8 @@ int WriteRegular(char *fileName, int nx, int ny, int nz)
 		return 1;
 	}
 }
+
+// Write boundary nodes
 int WriteL13D(char *fileName, int nx, int ny, int nz)
 {
 	FILE *outputFile = NULL;
@@ -2022,6 +1733,8 @@ int WriteL13D(char *fileName, int nx, int ny, int nz)
 		return 1;
 	}
 }
+
+// Write node numbers for each edge
 int WriteNodesForEdges(char *fileName, set<pair<int, int>> &edges)
 {
 	FILE *outputFile = NULL;
@@ -2048,6 +1761,8 @@ int WriteNodesForEdges(char *fileName, set<pair<int, int>> &edges)
 		return 1;
 	}
 }
+
+// Write mesh cells described by edges
 int WriteEdges(char *fileName, vector<vector<int>> &elementsByEdges)
 {
 	FILE *outputFile = NULL;
@@ -2080,6 +1795,8 @@ int WriteEdges(char *fileName, vector<vector<int>> &elementsByEdges)
 		return 1;
 	}
 }
+
+// Write empty edge T-Matrix
 int WriteIg3D(char *fileName)
 {
 	FILE *outputFile = NULL;
@@ -2143,6 +1860,8 @@ int WriteGg3D(char *fileName)
 		return 1;
 	}
 }
+
+// Write current direction file
 int WriteAlpha(char *fileName, Settings &meshSettings)
 {
 	FILE *outputFile = NULL;
@@ -2161,6 +1880,8 @@ int WriteAlpha(char *fileName, Settings &meshSettings)
 		return 1;
 	}
 }
+
+// Write frequency file
 int WriteNu(char *fileName, Settings &meshSettings)
 {
 	FILE *outputFile = NULL;
@@ -2179,6 +1900,8 @@ int WriteNu(char *fileName, Settings &meshSettings)
 		return 1;
 	}
 }
+
+// Write receivers coordinates
 int WritePointRes(char *fileName, vector<Receiver> &receivers)
 {
 	FILE *outputFile = NULL;
@@ -2201,6 +1924,8 @@ int WritePointRes(char *fileName, vector<Receiver> &receivers)
 		return 1;
 	}
 }
+
+// Write receivers coordinates
 int WritexyzVectorE(char *fileName, vector<Receiver> &receivers)
 {
 	FILE *outputFile = NULL;
@@ -2223,6 +1948,8 @@ int WritexyzVectorE(char *fileName, vector<Receiver> &receivers)
 		return 1;
 	}
 }
+
+// Write 1D mesh file
 int WriteMesh1D(char *fileName, vector<double> &mesh1D)
 {
 	FILE *outputFile = NULL;
@@ -2245,6 +1972,8 @@ int WriteMesh1D(char *fileName, vector<double> &mesh1D)
 		return 1;
 	}
 }
+
+// Write 1D problem mesh size file
 int WriteSetka1DEy(char *fileName, vector<double> &mesh1D)
 {
 	FILE *outputFile = NULL;
@@ -2263,6 +1992,8 @@ int WriteSetka1DEy(char *fileName, vector<double> &mesh1D)
 		return 1;
 	}
 }
+
+// Write 1D problem environment file
 int WriteSreda1DAy(char *fileName, vector<GeoLayer<double>> &layers)
 {
 	FILE *outputFile = NULL;
@@ -2284,6 +2015,8 @@ int WriteSreda1DAy(char *fileName, vector<GeoLayer<double>> &layers)
 		return 1;
 	}
 }
+
+// Write 3D problem SLAE size
 int WriteKuSlau2(char *fileName, int edgesCount)
 {
 	FILE *outputFile = NULL;
@@ -2302,6 +2035,8 @@ int WriteKuSlau2(char *fileName, int edgesCount)
 		return 1;
 	}
 }
+
+// Write threads count file
 int WriteNThreads(char *fileName, int threadsCount)
 {
 	FILE *outputFile = NULL;
@@ -2320,92 +2055,8 @@ int WriteNThreads(char *fileName, int threadsCount)
 		return 1;
 	}
 }
-int WriteGpSettings(char *fileName, double SLAEEps, int SLAEMaxIter)
-{
-	FILE *outputFile = NULL;
-	try
-	{
-		if (!(outputFile = fopen(fileName, "w"))) return 1;
 
-		fprintf(outputFile, "1e+006		// Rectmesh, Bak\n");
-		fprintf(outputFile, "0.1		// Hmin\n");
-		fprintf(outputFile, "1.05		// Coeff\n");
-		fprintf(outputFile, "1e+006		// Rectmesh SP, Bak\n");
-		fprintf(outputFile, "0.1		// Hmin\n");
-		fprintf(outputFile, "1.05		// Coeff\n");
-		fprintf(outputFile, "1e+006		// Rectmesh for loop, Bak\n");
-		fprintf(outputFile, "100		// R-coeff\n");
-		fprintf(outputFile, "1.1		// Coeff\n");
-		fprintf(outputFile, "1.1		// Time, Coeff\n");
-		fprintf(outputFile, "10		// Divisor\n");
-		fprintf(outputFile, "20		// Line, Loops for line\n");
-		fprintf(outputFile, "450		// Infinity coeff for loops\n");
-		fprintf(outputFile, "1000		// Infinity coeff for mesh\n");
-		fprintf(outputFile, "0		// Time, Gaps\n");
-		fprintf(outputFile, "1		// Log scale size\n");
-		fprintf(outputFile, "5		// Log scale\n");
-		fprintf(outputFile, "10		// Loops for square loop\n");
-		fprintf(outputFile, "0		// Enable recalculations 3D\n");
-		fprintf(outputFile, "%.13e		// SLAE3D eps\n", SLAEEps);
-		fprintf(outputFile, "1		// Enable recalculations 2D\n");
-		fprintf(outputFile, "0		// Direct output in VFEM\n");
-		fprintf(outputFile, "0		// Meshed\n");
-		fprintf(outputFile, "0		// EMF2d for line\n");
-		fprintf(outputFile, "1		// Enable parabolic iteration scheme\n");
-		fprintf(outputFile, "0.0001		// Residual for parabolic iteration scheme\n");
-		fprintf(outputFile, "0		// Use new 3d mesh generator\n");
-		fprintf(outputFile, "1		// Use xz optimization\n");
-		fprintf(outputFile, "1		// Use above z optimization\n");
-		fprintf(outputFile, "1		// Use under z optimization\n");
-		fprintf(outputFile, "1.3		// xy-contour\n");
-		fprintf(outputFile, "1.3		// xz-contour\n");
-		fprintf(outputFile, "1.3		// yz-contour\n");
-		fprintf(outputFile, "1.5		// cube in xy\n");
-		fprintf(outputFile, "1.5		// cube in xz\n");
-		fprintf(outputFile, "1.5		// cube in yz\n");
-		fprintf(outputFile, "1		// maximum number of t-nodes\n");
-		fprintf(outputFile, "2		// correct x-edges in hex area\n");
-		fprintf(outputFile, "2		// correct y-edges in hex area\n");
-		fprintf(outputFile, "2		// correct z-edges in hex area\n");
-		fprintf(outputFile, "1		// Object frame\n");
-		fprintf(outputFile, "1		// Number of periods\n");
-		fprintf(outputFile, "8		// Steps for period\n");
-		fprintf(outputFile, "10		// Vectors for GMRes\n");
-		fprintf(outputFile, "%d		// Max iter\n", SLAEMaxIter);
-		fprintf(outputFile, "1		// Use block relaxation\n");
-		fprintf(outputFile, "1		// Smooth EMF2d\n");
-		fprintf(outputFile, "0		// H2 for 3D mesh\n");
-		fprintf(outputFile, " 		// H2 types\n");
-		fprintf(outputFile, "0.01		// Alfa\n");
-		fprintf(outputFile, "0		// Smooth with 1 point\n");
-		fprintf(outputFile, "1		// Line coeff\n");
-		fprintf(outputFile, "0		// Find LLt\n");
-		fprintf(outputFile, "0		// Show messages\n");
-		fprintf(outputFile, "1		// Use base mesh optimization\n");
-		fprintf(outputFile, "1		// Calculate EMF for line\n");
-		fprintf(outputFile, "0		// Use line zones\n");
-		fprintf(outputFile, "1e-020		// SLAE2D eps\n");
-		fprintf(outputFile, "0		// Use CED resultants\n");
-		fprintf(outputFile, "0		// Use RotE\n");
-		fprintf(outputFile, "6		// Start time number for RotE\n");
-		fprintf(outputFile, "0.01		// Omega Max\n");
-		fprintf(outputFile, "0		// Frequency Medium\n");
-		fprintf(outputFile, "100		// Max iter block relax\n");
-		fprintf(outputFile, "0		// Resultant\n");
-		fprintf(outputFile, "1000		// Max iter fit\n");
-		fprintf(outputFile, "1000		// Max iter reg\n");
-
-		fclose(outputFile);
-
-		return 0;
-	}
-	catch (exception ex)
-	{
-		if (outputFile != NULL)
-			fclose(outputFile);
-		return 1;
-	}
-}
+// Write SLAE solving parameters file
 int WriteISSCTxt(char *fileName, double SLAEEps, int SLAEMaxIter)
 {
 	FILE *outputFile = NULL;
@@ -2427,6 +2078,8 @@ int WriteISSCTxt(char *fileName, double SLAEEps, int SLAEMaxIter)
 		return 1;
 	}
 }
+
+// Write simple needed file
 int WriteHarm3DParams(char *fileName)
 {
 	FILE *outputFile = NULL;
@@ -2447,6 +2100,7 @@ int WriteHarm3DParams(char *fileName)
 	}
 }
 
+// Write all mesh files procedure
 int WriteMesh(vector<double> *meshes1D, vector<double> *meshesTemplate1D, vector<int> &materialNumbers, set<pair<int, int>> &edges, vector<vector<int>> &elementsByEdges, Settings &meshSettings)
 {
 	vector<double> mesh1D;
@@ -2486,6 +2140,7 @@ int WriteMesh(vector<double> *meshes1D, vector<double> *meshesTemplate1D, vector
 	return 0;
 }
 
+// Write material parameters files
 int WriteMaterials(vector<Material> &materials)
 {
 	if (WriteProperty3D("Sig3d", materials, SigmaH, SigmaN, false) != 0)
@@ -2507,6 +2162,7 @@ int WriteMaterials(vector<Material> &materials)
 	}
 }
 
+// Main mesh building and files writing procedure
 int MainProcedure()
 {
 	char buf[2048];
@@ -2541,11 +2197,10 @@ int MainProcedure()
 	fprintf(log_file, "%lf :", std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1> >>(std::chrono::high_resolution_clock::now() - tProgramStart).count());
 	write_to_log("Reading objects\n");
 	if (ReadObjects("objects", objects) != 0)
-		if (ReadMObjects("mobjects", objects) != 0)
-		{
-			write_to_log("Error : MainProcedure : Could not read objects or mobjects\n");
-			return 1;
-		}
+	{
+		write_to_log("Error : MainProcedure : Could not read objects\n");
+		return 1;
+	}
 
 	fprintf(log_file, "%lf :", std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1> >>(std::chrono::high_resolution_clock::now() - tProgramStart).count());
 	write_to_log("Reading receivers\n");

@@ -1,3 +1,23 @@
+/**                                                                                                                
+ * GENERAL REMARKS                                                                                                 
+ *                                                                                                                 
+ *  This code is freely available under the following conditions:                                                  
+ *                                                                                                                 
+ *  1) The code is to be used only for non-commercial purposes.                                                    
+ *  2) No changes and modifications to the code without prior permission of the developer.                         
+ *  3) No forwarding the code to a third party without prior permission of the developer.                          
+ *                                                                                                                 
+ *  			MTCalc_with_DFP_COCR                                                                       
+ *  This file contains the implementation of of the COCR solver.                                                
+ *  The reverse communication inteface is used. Matrix storage format and preconditioner is not specified here. 
+ *                                                                                                                 
+ *  Written by Ph.D. Petr A. Domnikov                                                                              
+ *  Novosibirsk State Technical University,                                                                        
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                              
+ *  p_domnikov@mail.ru                                                                                             
+ *  Version 1.2 April 7, 2021                                                                                      
+*/                                                                                                                 
+                                                                                                                   
 #include "stdafx.h"
 #include "pcocr_rci.h"
 #include "ControlOMP.h"
@@ -34,7 +54,6 @@ int PCOCR_RCI::Run()
 	switch(stage)
 	{
 	case 1:
-		// вычисляем невязку системы (r)
 		*in = x;
 		*out = r;
 		request = REQ_MULT_MV;
@@ -47,19 +66,17 @@ int PCOCR_RCI::Run()
 			r[i] = pr[i] - r[i];
 		}
 
-		// норма невязки перед началом счёта
-		// как будто считаем с нулевого начального приближения
 		r_old = bs.Norm_Euclid(pr, n);
-		//cout<<"NORM= "<<bs.Norm_Euclid(r, n)/bs.Norm_Euclid(pr, n)<<endl;
 
-		// проверяем, является ли уже начальное приближение решением
+
+
 		*in = r;
 		request = REQ_X0_TEST;
 		stage = 3;
 		break;
 
 	case 3:
-		// невязка предобусловленной системы (s=M^{-1}*r)
+		// s=M^{-1}*r
 		*in = r;
 		*out = s;
 		request = REQ_PRECOND;
@@ -83,7 +100,6 @@ int PCOCR_RCI::Run()
 
 	case 5:
 MAIN_CYCLE:
-		// главный цикл
 		iter++;
 
 		if(iter > maxiter)

@@ -1,3 +1,21 @@
+/**                                                                                                                                
+ * GENERAL REMARKS                                                                                                                 
+ *                                                                                                                                 
+ *  This code is freely available under the following conditions:                                                                  
+ *                                                                                                                                 
+ *  1) The code is to be used only for non-commercial purposes.                                                                    
+ *  2) No changes and modifications to the code without prior permission of the developer.                                         
+ *  3) No forwarding the code to a third party without prior permission of the developer.                                          
+ *                                                                                                                                 
+ *  			MTCalc_with_DFP_COCR                                                                                       
+ *  Building a spline on the ground surface to output the value of the required function at an arbitrary point (receiver position) 
+ *                                                                                                                                 
+ *  Written by Ph.D. Petr A. Domnikov                                                                                              
+ *  Novosibirsk State Technical University,                                                                                        
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                                              
+ *  p_domnikov@mail.ru                                                                                                             
+ *  Version 1.2 March 10, 2021                                                                                                     
+*/                                                                                                                                 
 #include "stdafx.h"
 #include "OutputArbitrary.h"
 #include "give_out_vec_mt.h"
@@ -35,7 +53,7 @@ Give_out_vec_mt::~Give_out_vec_mt()
 
 }
 //------------------------------------------------------------------------------
-//-- Вычисляет одномерной поле (E_1d, H_1d) в точке у поверхности земли (z=0) --
+//-- Calculates a one-dimensional field (E_1d, H_1d) at a point near the ground (z=0) --
 //------------------------------------------------------------------------------
 void Give_out_vec_mt::Compute_1d_field()
 {
@@ -78,13 +96,13 @@ void Give_out_vec_mt::Compute_1d_field()
 	infe.clear();
 }
 //-----------------------------------------------------------------------------
-//--- Выдать E, H, impedance, rok, на сетке из шестигранников. 
+//---Issue E, H, impedance, rok, on a mesh of hexahedrons. 
 //-----------------------------------------------------------------------------
 void Give_out_vec_mt::Give_out_on_hex(bool for_harm_loop)
 {
 	int i, j;
 	
-	double w; // циклическая частота
+	double w; // cyclic frequency
 	const double mu = MU_0;
 	w = d->nu*2.0*PI;
 
@@ -250,7 +268,7 @@ void Give_out_vec_mt::Give_out_on_hex(bool for_harm_loop)
 	}
 }
 //-----------------------------------------------------------------------------
-//-------------   запись результатов в файлы   --------------------------------
+//-------------   writing results to files   --------------------------------
 //-----------------------------------------------------------------------------
 void Give_out_vec_mt::Write_result_to_files()
 {
@@ -261,7 +279,7 @@ void Give_out_vec_mt::Write_result_to_files()
 	FILE *f_impedance;
 
 
-	// Нормальное поле
+	// Normal field
 	ofstream out;
 
 	out.open("normal_field");
@@ -567,7 +585,7 @@ int Give_out_vec_mt::Read_1d_field(char *fname_in, double &Ex_s, double &Ex_c, d
 	return 0;
 }
 //--------------------------------------------------------------------------------------
-// дифференцирование решения по времени (по 3-слойной схеме) в точке t из [t_j2, t_j]
+//differentiation of the solution in time (according to the 3-layer scheme) at the point t from [t_j2, t_j]
 //---------------------------------------------------------------------------------------
 double Give_out_vec_mt::dA_dt(double t, double u_j, double u_j1, double u_j2,
 			 double dt, double dt0, double dt1, double t_j, double t_j1, double t_j2)

@@ -1,6 +1,15 @@
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// This module contains functions-shells for standard file I/O functions.
+//
+// Phd. Persova M.G.
+// Novosibirsk State Technical University
+// 20, Karl Marx Avenue, Novosibirsk, Russia 
+
 #include "stdafx.h"
 #include "open_close.h"
 
+// Opening file for reading
 int OpenInputFile(ifstream &inf,char *fname,ios_base::open_mode mode)
 {
 	inf.open(fname,mode);
@@ -16,6 +25,7 @@ int OpenInputFile(ifstream &inf,char *fname,ios_base::open_mode mode)
 	}
 }
 
+// Opening file for reading
 int OpenOutputFile(ofstream &ofp,char *fname,ios_base::open_mode mode)
 {
 	ofp.open(fname,mode);
@@ -31,6 +41,7 @@ int OpenOutputFile(ofstream &ofp,char *fname,ios_base::open_mode mode)
 	}
 }
 
+// Closing file after reading
 int CloseInputFile(ifstream &inf,char *fname)
 {
 	if(inf.good())
@@ -47,6 +58,7 @@ int CloseInputFile(ifstream &inf,char *fname)
 	}
 }
 
+// Closing file after reading
 int CloseOutputFile(ofstream &ofp,char *fname)
 {
 	if(ofp.good())

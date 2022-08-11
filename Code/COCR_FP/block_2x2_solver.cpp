@@ -1,19 +1,42 @@
+/**                                                                                          
+ * GENERAL REMARKS                                                                           
+ *                                                                                           
+ *  This code is freely available under the following conditions:                            
+ *                                                                                           
+ *  1) The code is to be used only for non-commercial purposes.                              
+ *  2) No changes and modifications to the code without prior permission of the developer.   
+ *  3) No forwarding the code to a third party without prior permission of the developer.    
+ *                                                                                           
+ *  			MTCalc_with_DFP_COCR                                                 
+ *  This file contains subroutines for matrix-vector operations with a matrix stored in 2x2-block sparse format          
+ *                                                                                           
+ *  Written by Ph.D. Petr A. Domnikov                                                        
+ *  Novosibirsk State Technical University,                                                  
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                        
+ *  p_domnikov@mail.ru                                                                       
+ *  Version 1.2 April 9, 2021                                                                
+*/                                                                                           
+
+
 #include "stdafx.h"
 #include "block_2x2_solver.h"
 #include "ControlOMP.h"
 extern ControlOMP omp;
 extern ofstream logfile;
-
+//------------------------------------------------------------------------
+// Constructor
 //------------------------------------------------------------------------
 Block_2x2_solver::Block_2x2_solver()
 {
 }
+//-------------------------------------------------------------------------
+// Destructor
 //------------------------------------------------------------------------
 Block_2x2_solver::~Block_2x2_solver()
 {
 }
 //------------------------------------------------------------------------
-// умножение одного блока
+//  multiplication of a single block
 //------------------------------------------------------------------------
 inline void Block_2x2_solver::Mult_block_2x2(double *a, int size, double *x, double *y)
 {
@@ -29,6 +52,8 @@ inline void Block_2x2_solver::Mult_block_2x2(double *a, int size, double *x, dou
 	}
 }
 //------------------------------------------------------------------------
+// multiplication of a transposed block
+//------------------------------------------------------------------------
 inline void Block_2x2_solver::Mult_MV_block_2x2_transp(double *a, int size, double *x, double *y)
 {
 	if (size == 2)
@@ -43,31 +68,31 @@ inline void Block_2x2_solver::Mult_MV_block_2x2_transp(double *a, int size, doub
 	}
 }
 //------------------------------------------------------------------------
-// умножение блочной матрицы на вектор
+// multiplication of a block matrix by a vector
 //------------------------------------------------------------------------
 void Block_2x2_solver::Mult_MV_block_2x2(int nb, int *ig, int *jg, int *idi, int *ijg,
 										 double *di_block, double *ggl_block, double *x, double *y, double *y_omp)
 {
 	int i, j, k;
-	int size; // размер блока
+	int size; // block size
 	int ib, jb;
 	
 	int adr;
-	int rank; // номер текущей нити
+	int rank; // number of the current thread
 	int threadNum = omp.GetNumberOfThreads();
 	if (threadNum == 1 || nb < omp.GetNMinSparseMultMV2x2()) 
 	{
-		for(i=0; i<nb*2; i++) // заполняем нулями вектор-результат
+		for(i=0; i<nb*2; i++) // vector-result is filled by 0
 			y[i] = 0.0;
 
 		for(i=0; i<nb; i++)
 		{
-			// умножение на диагональные блоки
+			// diagonal blocks multiplication
 			ib = i*2;
 			size = idi[i+1] - idi[i];
 			Mult_block_2x2(&di_block[idi[i]], size, &x[ib], &y[ib]);
 
-			// умножение на внедиагональные блоки
+			// non-diagonal blocks multiplication
 			for(j=ig[i]; j<=ig[i+1]-1; j++)
 			{
 				jb = jg[j]*2;
@@ -83,7 +108,7 @@ void Block_2x2_solver::Mult_MV_block_2x2(int nb, int *ig, int *jg, int *idi, int
 		#pragma omp parallel shared(ig, jg, idi, ijg, di_block, ggl_block, x, y, y_omp) private(i, j, k, size, ib, jb, rank, adr) num_threads(threadNum)
 		{
 			#pragma omp for nowait
-			for(i=0; i<nb*2; i++) // заполняем нулями вектор-результат
+			for(i=0; i<nb*2; i++) // vector-result is filled by 0
 			{
 				y[i] = 0.0;
 			}
@@ -100,12 +125,12 @@ void Block_2x2_solver::Mult_MV_block_2x2(int nb, int *ig, int *jg, int *idi, int
 				rank = omp_get_thread_num();
 				if (rank == 0)
 				{
-					// умножение на диагональные блоки
+					// diagonal blocks multiplication
 					ib = i*2;
 					size = idi[i+1] - idi[i];
 					Mult_block_2x2(&di_block[idi[i]], size, &x[ib], &y[ib]);
 
-					// умножение на внедиагональные блоки
+					// non-diagonal blocks multiplication
 					for(j=ig[i]; j<=ig[i+1]-1; j++)
 					{
 						jb = jg[j]*2;
@@ -119,12 +144,12 @@ void Block_2x2_solver::Mult_MV_block_2x2(int nb, int *ig, int *jg, int *idi, int
 				{
 					adr = (rank - 1)*nb*2;
 
-					// умножение на диагональные блоки
+					// diagonal blocks multiplication
 					ib = i*2;
 					size = idi[i+1] - idi[i];
 					Mult_block_2x2(&di_block[idi[i]], size, &x[ib], &y_omp[adr + ib]);
 
-					// умножение на внедиагональные блоки
+					// non-diagonal blocks multiplication
 					for(j=ig[i]; j<=ig[i+1]-1; j++)
 					{
 						jb = jg[j]*2;
@@ -147,30 +172,32 @@ void Block_2x2_solver::Mult_MV_block_2x2(int nb, int *ig, int *jg, int *idi, int
 	}// else
 }
 //------------------------------------------------------------------------
+// multiplication of a transposed block matrix by a vector
+//------------------------------------------------------------------------
 void Block_2x2_solver::Mult_MV_block_2x2_transp(int nb, int *ig, int *jg, int *idi, int *ijg,
 										 double *di_block, double *ggl_block, double *x, double *y, double *y_omp)
 {
 	int i, j, k;
-	int size; // размер блока
+	int size; // block size
 	int ib, jb;
 
 	int adr;
-	int rank; // номер текущей нити
+	int rank; // number of the current thread
 	int threadNum = omp.GetNumberOfThreads();
 
 	if (threadNum == 1 || nb < omp.GetNMinSparseMultMV2x2()) 
 	{
-		for(i=0; i<nb*2; i++) // заполняем нулями вектор-результат
+		for(i=0; i<nb*2; i++) // vector-result is filled by 0
 			y[i] = 0.0;
 
 		for(i=0; i<nb; i++)
 		{
-			// умножение на диагональные блоки
+			// diagonal blocks multiplication
 			ib = i*2;
 			size = idi[i+1] - idi[i];
 			Mult_MV_block_2x2_transp(&di_block[idi[i]], size, &x[ib], &y[ib]);
 
-			// умножение на внедиагональные блоки
+			// non-diagonal blocks multiplication
 			for(j=ig[i]; j<=ig[i+1]-1; j++)
 			{
 				jb = jg[j]*2;
@@ -186,7 +213,7 @@ void Block_2x2_solver::Mult_MV_block_2x2_transp(int nb, int *ig, int *jg, int *i
 #pragma omp parallel shared(ig, jg, idi, ijg, di_block, ggl_block, x, y, y_omp) private(i, j, k, size, ib, jb, rank, adr) num_threads(threadNum)
 		{
 #pragma omp for nowait
-			for(i=0; i<nb*2; i++) // заполняем нулями вектор-результат
+			for(i=0; i<nb*2; i++) // vector-result is filled by 0
 			{
 				y[i] = 0.0;
 			}
@@ -204,12 +231,12 @@ void Block_2x2_solver::Mult_MV_block_2x2_transp(int nb, int *ig, int *jg, int *i
 
 				if (rank == 0)
 				{
-					// умножение на диагональные блоки
+					// diagonal blocks multiplication
 					ib = i*2;
 					size = idi[i+1] - idi[i];
 					Mult_MV_block_2x2_transp(&di_block[idi[i]], size, &x[ib], &y[ib]);
 
-					// умножение на внедиагональные блоки
+					// non-diagonal blocks multiplication
 					for(j=ig[i]; j<=ig[i+1]-1; j++)
 					{
 						jb = jg[j]*2;
@@ -223,12 +250,12 @@ void Block_2x2_solver::Mult_MV_block_2x2_transp(int nb, int *ig, int *jg, int *i
 				{
 					adr = (rank - 1)*nb*2;
 
-					// умножение на диагональные блоки
+					// diagonal blocks multiplication
 					ib = i*2;
 					size = idi[i+1] - idi[i];
 					Mult_MV_block_2x2_transp(&di_block[idi[i]], size, &x[ib], &y_omp[adr + ib]);
 
-					// умножение на внедиагональные блоки
+					// non-diagonal blocks multiplication
 					for(j=ig[i]; j<=ig[i+1]-1; j++)
 					{
 						jb = jg[j]*2;
@@ -251,23 +278,21 @@ void Block_2x2_solver::Mult_MV_block_2x2_transp(int nb, int *ig, int *jg, int *i
 	}// else
 }
 //------------------------------------------------------------------------
-
-//------------------------------------------------------------------------
-// факторизация диагональных блоков
+// Build block-diagonal preconditioner
 //------------------------------------------------------------------------
 int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi, 
 	double *di_block, double *df, int *idi_f, double *ggl_f, double *ggu_f)
 {
 	int i;
-	int adr; // адрес начала хранения внедиаг. эл-тов исходного блока в di_block[]
-	int adr_f; // адрес начала хранения внедиаг. эл-тов факторизованного блока в ggl_f[], ggu_f[]
+	int adr; // the address of the beginning of storage of off-diagonal elements of the source block in di_block[]
+	int adr_f; // the address of the beginning of storage of off-diagonal elements of the factorized block in ggl_f[], ggu_f[]
 	double b, c;
 
 	for(i=0; i<nb; i++)
 	{
 		adr = idi[i];
 
-		if(idi[i+1] - adr == 2) //размер блока==2
+		if(idi[i+1] - adr == 2) // block size==2
 		{
 			b = di_block[adr];
 			c = di_block[adr+1];
@@ -282,13 +307,15 @@ int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi,
 			ggu_f[adr_f] = -ggl_f[adr_f];
 		}
 		else
-		{//размер блока==1
+		{//block size==1
 			df[i*2]=df[i*2+1] = sqrt(b);
 		}
 	}
 
 	return 0;
 }
+//------------------------------------------------------------------------
+// Build block-diagonal preconditioner
 //------------------------------------------------------------------------
 int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi, 
 													  double *di_block, double *df, double *ggl_f, double *ggu_f)
@@ -304,7 +331,7 @@ int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi,
 		{
 			adr = idi[i];
 
-			if(idi[i+1] - adr == 2) //размер блока==2
+			if(idi[i+1] - adr == 2) // block size==2
 			{
 
 				b = di_block[adr];
@@ -316,7 +343,7 @@ int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi,
 				ggu_f[i] = -c/sqrt(b);
 				df[i*2+1]=sqrt(b - ggl_f[i]*ggu_f[i]);
 			}
-			else //размер блока==1
+			else // block size==1
 			{
 				b = di_block[adr];
 				df[i*2]=df[i*2+1] = sqrt(b);
@@ -329,6 +356,8 @@ int Block_2x2_solver::Build_block_diag_preconditioner(int nb, int *idi,
 	return 0;
 }
 //------------------------------------------------------------------------
+// Build block-diagonal preconditioner
+//------------------------------------------------------------------------
 int Block_2x2_solver::Build_complex_diag_preconditioner(int nb, int *idi, double *di_block, double *df)
 {
 	int i;
@@ -339,7 +368,7 @@ int Block_2x2_solver::Build_complex_diag_preconditioner(int nb, int *idi, double
 	{
 		adr = idi[i];
 
-		if(idi[i+1] - adr == 2) //размер блока==2
+		if(idi[i+1] - adr == 2) //block size==2
 		{
 			a = std::complex<double>(di_block[adr], di_block[adr+1]);
 			d = std::complex<double>(1, 0)/a;
@@ -347,7 +376,7 @@ int Block_2x2_solver::Build_complex_diag_preconditioner(int nb, int *idi, double
 			df[i*2]   = real(d);
 			df[i*2+1] = imag(d);
 		}
-		else //размер блока==1
+		else //block size==1
 		{
 			df[i*2]   = 1.0/di_block[adr];
 			df[i*2+1] = 0.0;
@@ -357,7 +386,7 @@ int Block_2x2_solver::Build_complex_diag_preconditioner(int nb, int *idi, double
 	return 0;
 }
 //------------------------------------------------------------------------
-// 
+// Solve lower triangular system with block-diagonal matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::solve_l_blockdiag(int nb, double *df, int *idi_f, double *ggl_f,
 										double *f, double *x)
@@ -386,7 +415,7 @@ int Block_2x2_solver::solve_l_blockdiag(int nb, double *df, int *idi_f, double *
 	return 0;
 }
 //------------------------------------------------------------------------
-// 
+// Solve upper triangular system with block-diagonal matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::solve_u_blockdiag(int nb, double *df, int *idi_f, double *ggu_f,
 										double *f, double *x)
@@ -415,7 +444,7 @@ int Block_2x2_solver::solve_u_blockdiag(int nb, double *df, int *idi_f, double *
 	return 0;
 }
 //------------------------------------------------------------------------
-// 
+// Solve lower triangular system with block-diagonal matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::solve_l_blockdiag(int nb, double *df, double *ggl_f, double *f, double *x)
 {
@@ -437,7 +466,7 @@ int Block_2x2_solver::solve_l_blockdiag(int nb, double *df, double *ggl_f, doubl
 	return 0;
 }
 //------------------------------------------------------------------------
-// 
+// Solve upper triangular system with block-diagonal matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::solve_u_blockdiag(int nb, double *df, double *ggu_f, double *f, double *x)
 {
@@ -458,7 +487,7 @@ int Block_2x2_solver::solve_u_blockdiag(int nb, double *df, double *ggu_f, doubl
 	return 0;
 }
 //------------------------------------------------------------------------
-// Комлексная факторизация
+// Complex-valued incomplete Cholesky factorization
 //------------------------------------------------------------------------
 int Block_2x2_solver::LLT_Cmplx(int nb, int *ig, int *jg, int *idi,
 								int *ijg, double *di, double *gg,
@@ -538,7 +567,7 @@ int Block_2x2_solver::LLT_Cmplx(int nb, int *ig, int *jg, int *idi,
 	return 0;
 }
 //------------------------------------------------------------------------
-// Решение СЛАУ с нижнетреугольной комплексной матрицей
+// A forward solve with complex-valued sparse triangular matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::SolveL_Cmplx(int nb, int *ig, int *jg, double *di, double *gg,
 				 double *f, double *x)
@@ -568,7 +597,7 @@ int Block_2x2_solver::SolveL_Cmplx(int nb, int *ig, int *jg, double *di, double 
 	return 0;
 }
 //------------------------------------------------------------------------
-// Решение СЛАУ с верхнетреугольной комплексной матрицей
+// A backward solve with complex-valued sparse triangular matrix
 //------------------------------------------------------------------------
 int Block_2x2_solver::SolveU_Cmplx(int nb, int *ig, int *jg, double *di, double *gg,
 				 double *f, double *s, double *x)
@@ -601,7 +630,7 @@ int Block_2x2_solver::SolveU_Cmplx(int nb, int *ig, int *jg, double *di, double 
 	return 0;
 }
 //------------------------------------------------------------------------
-//
+// Multiplication of upper triangular system with block-diagonal matrix by a vector
 //------------------------------------------------------------------------
 void Block_2x2_solver::mult_u_blockdiag(int nb, double *df, double *ggu_f, double *x, double *y)
 {
@@ -620,6 +649,8 @@ void Block_2x2_solver::mult_u_blockdiag(int nb, double *df, double *ggu_f, doubl
 	} // end parallel section
 }
 //------------------------------------------------------------------------
+// Multiplication of lower triangular system with block-diagonal matrix by a vector
+//------------------------------------------------------------------------
 void Block_2x2_solver::mult_l_blockdiag(int nb, double *df, double *ggl_f, double *x, double *y)
 {
 	int i;
@@ -636,6 +667,8 @@ void Block_2x2_solver::mult_l_blockdiag(int nb, double *df, double *ggl_f, doubl
 		}	
 	} // end parallel section
 }
+//------------------------------------------------------------------------
+// Permutation of a vector
 //------------------------------------------------------------------------
 void Block_2x2_solver::Perm(int nb, double *x, double *y)
 {

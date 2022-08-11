@@ -1,3 +1,22 @@
+/**                                                                                             
+ * GENERAL REMARKS                                                                              
+ *                                                                                              
+ *  This code is freely available under the following conditions:                               
+ *                                                                                              
+ *  1) The code is to be used only for non-commercial purposes.                                 
+ *  2) No changes and modifications to the code without prior permission of the developer.      
+ *  3) No forwarding the code to a third party without prior permission of the developer.       
+ *                                                                                              
+ *  			MTCalc_with_DFP_COCR                                                    
+ *  This file contains a structures of finite element mesh storing                              
+ *                                                                                              
+ *  Written by Prof. Marina G. Persova, Ph.D. Petr A. Domnikov and Ph.D. Dmitry S. Kiselev                                            
+ *  Novosibirsk State Technical University,                                                     
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                           
+ *  mpersova@mail.ru, p_domnikov@mail.ru, harlequin_00@mail.ru                                                                    
+ *  Version 2.1 December 17, 2020                                                               
+*/                                                                                              
+
 #include "stdafx.h"
 #include "vec_prep_data.h"
 #include "GeoPrepDocSettings.h" 
@@ -59,7 +78,7 @@ Vec_Prep_Data::~Vec_Prep_Data()
 	if(dpr0) {delete [] dpr0; dpr0=NULL;}
 }
 //-----------------------------------------------------------------------------
-// чтение сетки для петли на векторных
+// reading mesh on vector finite elements
 //-----------------------------------------------------------------------------
 int Vec_Prep_Data::Read_mesh_for_nonstat_problem(char *pointres_fname)
 {
@@ -84,7 +103,7 @@ int Vec_Prep_Data::Read_mesh_for_nonstat_problem(char *pointres_fname)
 	inf.close();
 	inf.clear();
 
-	// n_materials (максимальный номер материала в файле sig3d)
+	// n _materials (max material number in sig3d file)
 	if((fp=fopen("sig3d", "r"))==0)
 		Cannot_open_file("sig3d", "Vec_Prep_Data::Read_mesh_for_nonstat_problem");
 
@@ -246,7 +265,7 @@ int Vec_Prep_Data::Read_mesh_for_nonstat_problem(char *pointres_fname)
 	return 0;
 }
 //-----------------------------------------------------------------------------
-// чтение сетки для петли с гармоническим источником
+// read grid (harmonic source)
 //-----------------------------------------------------------------------------
 int Vec_Prep_Data::ReadPrepDataHarmLoop(char *pointres_fname)
 {
@@ -277,7 +296,7 @@ int Vec_Prep_Data::ReadPrepDataHarmLoop(char *pointres_fname)
 	r.Read_Double_From_Txt_File("nu", &nu);
 
 
-	// n_materials (максимальный номер материала в файле sig3d)
+	// n_materials (max material number in sig3d file)
 	if((fp=fopen("sig3d", "r"))==0)
 		Cannot_open_file("sig3d", "Vec_Prep_Data::Read_mesh_for_nonstat_problem");
 
@@ -426,9 +445,9 @@ int Vec_Prep_Data::ReadPrepDataHarmLoop(char *pointres_fname)
 
 	return 0;
 }
-//-----------------------------------------------------------------------------
-// чтение сетки для МТЗ на векторных
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------- 
+// reading the grid for VFEM MT                                                 
+//----------------------------------------------------------------------------- 
 int Vec_Prep_Data::Read_prep_data()
 {
 	ifstream inf;
@@ -601,7 +620,7 @@ int Vec_Prep_Data::Read_prep_data()
 	if(Read_3dmeshregular(0)!=0)
 		throw logic_error("Error reading file 3dmeshregular.");
 
-	if (tasktype==0 && !fdirect) // если МТЗ
+	if (tasktype==0 && !fdirect) // if MT
 	{
 		// sreda1d.ay
 		if((fp=fopen("sreda1d.ay","r"))==0)
@@ -675,10 +694,10 @@ int Vec_Prep_Data::Read_mtz_1d()
 	// nu
 	r.Read_Double_From_Txt_File("nu", &nu);
 
-	// считываем число узлов в одномерной задаче
+	// read the number of nodes in the one-dimensional problem
 	r.Read_Long_From_Txt_File("setka1DEy", &n_1d);
 
-    // выделяем память под z_1d[], usin[], ucos[]
+	// allocate memory for z_1d[], usin[], ucos[]
 	z_1d = new double[n_1d];
 	if(z_1d == 0)
 		Memory_allocation_error("z_1d", "Vec_Prep_Data::Read_mtz_1d");
@@ -691,12 +710,12 @@ int Vec_Prep_Data::Read_mtz_1d()
 	if(ucos == 0)
 		Memory_allocation_error("ucos", "Vec_Prep_Data::Read_mtz_1d");
 
-	// Читаем 1-мерную сетку и решение 1-мерной задачи (sin- и cos- компоненты)
-	// из файлов usin.dat, ucos.dat.
+	// Read 1D mesh and 1D solution (sin and cos components)
+	// from files usin.dat, ucos.dat.	
 	return r.Read_1d_data(n_1d, z_1d, usin, ucos);
 }
 //-----------------------------------------------------------------------------
-//---  читает 3dmeshregular, пропуская координаты сетки с интервалом=interval
+// reads 3dmeshregular skipping grid coordinates with interval
 //-----------------------------------------------------------------------------
 int Vec_Prep_Data::Read_3dmeshregular(long interval)
 {
@@ -843,13 +862,13 @@ int Vec_Prep_Data::Read_infite0()
 
  		if(strcmp(buffer,"T")==0)
  		{
-			for(i=0; i<4; i++) // пропускаем  "I M E :"
+			for(i=0; i<4; i++) 
 				fscanf(fp, "%s", buffer);
 
 			for (i=0; i<ntime; i++)
 			{
-				fscanf(fp, "%lf", &time[i]); // считываем очередной временной слой
-				fscanf(fp, "%s", buffer); // пропускаем ";"
+				fscanf(fp, "%lf", &time[i]); 
+				fscanf(fp, "%s", buffer); 
 			}
  			break;
  		}

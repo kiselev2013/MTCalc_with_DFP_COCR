@@ -1,3 +1,22 @@
+/**                                                                                         
+ * GENERAL REMARKS                                                                          
+ *                                                                                          
+ *  This code is freely available under the following conditions:                           
+ *                                                                                          
+ *  1) The code is to be used only for non-commercial purposes.                             
+ *  2) No changes and modifications to the code without prior permission of the developer.  
+ *  3) No forwarding the code to a third party without prior permission of the developer.   
+ *                                                                                          
+ *  			MTCalc_with_DFP_COCR                                                
+ *  This file contains some basic routines for matrix conversion to CSR format              
+ *                                                                                          
+ *  Written by Ph.D. Petr A. Domnikov                                                       
+ *  Novosibirsk State Technical University,                                                 
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                       
+ *  p_domnikov@mail.ru                                                                      
+ *  Version 1.2 April 7, 2021                                                               
+*/                                                                                          
+
 #include "stdafx.h"
 #include "FormatConverter.h"
 //------------------------------------------------------------------------
@@ -33,14 +52,14 @@ void FormatConverter::FromRSFToCSR_Real_2_Sym(int nb, int *ig, int *jg, double *
 	int i, j, k, m;
 	vector<MKL_INT64> col; 
 
-	// подсчитываем число элементов в каждой строчке
+	// count the number of elements in each line
 	col.resize(nb, 0);
 
 	for (i=0; i<nb; i++)
 	{
-		col[i] += 1; // диагональ
+		col[i] += 1; // diagonal
 
-		// верхний треугольник
+		// upper triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -58,9 +77,9 @@ void FormatConverter::FromRSFToCSR_Real_2_Sym(int nb, int *ig, int *jg, double *
 		aelem[i] = 0;
 
 	for (i=0; i<nb; i++)
-		col[i] = iptr[i]; // в какую позицию заносить значение
+		col[i] = iptr[i]; // in which position to put the value
 
-	// диагональ
+	// diagonal 
 	for (i=0; i<nb; i++)
 	{
 		jptr[col[i]] = i;
@@ -68,7 +87,7 @@ void FormatConverter::FromRSFToCSR_Real_2_Sym(int nb, int *ig, int *jg, double *
 		col[i]++;
 	}
 
-	// верхний треугольник
+	// upper triangle
 	for (i=0; i<nb; i++)
 	{
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
@@ -90,14 +109,14 @@ void FormatConverter::From2x2ToCSRComplex_2_Sym(int nb, int *ig, int *jg, int *i
 	int i, j, k, m;
 	vector<MKL_INT64> col; 
 
-	// подсчитываем число элементов в каждой строчке
+	// count the number of elements in each line
 	col.resize(nb, 0);
 
 	for (i=0; i<nb; i++)
 	{
-		col[i] += 1; // диагональ
+		col[i] += 1; // diagonal
 
-		// верхний треугольник
+		// upper triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -115,9 +134,9 @@ void FormatConverter::From2x2ToCSRComplex_2_Sym(int nb, int *ig, int *jg, int *i
 		aelem[i] = 0;
 
 	for (i=0; i<nb; i++)
-		col[i] = iptr[i]; // в какую позицию заносить значение
+		col[i] = iptr[i]; // in which position to put the value
 
-	// диагональ
+	// diagonal
 	for (i=0; i<nb; i++)
 	{
 		jptr[col[i]] = i;
@@ -130,7 +149,7 @@ void FormatConverter::From2x2ToCSRComplex_2_Sym(int nb, int *ig, int *jg, int *i
 		col[i]++;
 	}
 
-	// верхний треугольник
+	// upper triangle
 	for (i=0; i<nb; i++)
 	{
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
@@ -154,14 +173,14 @@ void FormatConverter::From2x2ToCSRComplex_2_NS(int nb, int *ig, int *jg, int *id
 	int i, j, k, m;
 	vector<int> col; 
 
-	// подсчитываем число элементов в каждой строчке
+	// count the number of elements in each line
 	col.resize(nb, 0);
 
 	for (i=0; i<nb; i++)
 	{
-		col[i] += ig[i+1] - ig[i] + 1; // нижний треугольник + диагональ
+		col[i] += ig[i+1] - ig[i] + 1; // lower triangle + diagonal
 
-		// верхний треугольник
+		// upper triangle 
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -179,11 +198,11 @@ void FormatConverter::From2x2ToCSRComplex_2_NS(int nb, int *ig, int *jg, int *id
 		aelem[i] = 0;
 
 	for (i=0; i<nb; i++)
-		col[i] = iptr[i]; // в какую позицию заносить значение
+		col[i] = iptr[i]; // in which position to put the value
 
 	for (i=0; i<nb; i++)
 	{
-		// нижний треугольник
+		// lower triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			jptr[col[i]] = jg[j];
@@ -196,7 +215,7 @@ void FormatConverter::From2x2ToCSRComplex_2_NS(int nb, int *ig, int *jg, int *id
 			col[i]++;
 		}
 
-		// диагональ
+		// diagonal
 		jptr[col[i]] = i;
 
 		sz = idi[i+1] - idi[i];
@@ -207,7 +226,7 @@ void FormatConverter::From2x2ToCSRComplex_2_NS(int nb, int *ig, int *jg, int *id
 		col[i]++;
 	}
 
-	// верхний треугольник
+	// upper triangle  
 	for (i=0; i<nb; i++)
 	{
 		for (j=ig[i]; j<=ig[i+1]-1; j++)

@@ -1,3 +1,23 @@
+/**                                                                                           
+ * GENERAL REMARKS                                                                           
+ *                                                                                           
+ *  This code is freely available under the following conditions:                            
+ *                                                                                           
+ *  1) The code is to be used only for non-commercial purposes.                              
+ *  2) No changes and modifications to the code without prior permission of the developer.   
+ *  3) No forwarding the code to a third party without prior permission of the developer.    
+ *                                                                                           
+ *              MTCalc_with_DFP_COCR                                                         
+ *  Defines the entry point for the application.                                                      
+ *                                                                                           
+ *  Written by Ph.D. Petr A. Domnikov                            
+ *  Novosibirsk State Technical University,                                                  
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                        
+ *  p_domnikov@mail.ru                                                                         
+ *  Version 1.4 December 1, 2020                                                            
+*/                                                                                           
+
+
 #include "stdafx.h"
 #include "bound_cond_vec_harm.h"
 #include "t_global_slae.h"
@@ -56,9 +76,9 @@ int main()
 	ifstream inf;
 	ofstream ofp;
 
-	long n;				// всего базисных функций
-	long (*edges)[2];	// рЄбра, заданные 2-м€ вершинами
-	long (*ed)[25];		// €чейки перечисленные своими рЄбрами + доп. информаци€
+	long n;				
+	long (*edges)[2];	
+	long (*ed)[25];		
 	
 	logfile.open("logharm3d");
 

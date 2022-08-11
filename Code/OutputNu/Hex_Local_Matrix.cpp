@@ -1,3 +1,22 @@
+/**                                                                                       
+ * GENERAL REMARKS                                                                        
+ *                                                                                        
+ *  This code is freely available under the following conditions:                         
+ *                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                           
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer. 
+ *                                                                                        
+ *  			MTCalc_with_DFP_COCR                                              
+ *  Computation of local matrices on hexahedrons                                          
+ *                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                     
+ *  Novosibirsk State Technical University,                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                     
+ *  p_domnikov@mail.ru                                                                    
+ *  Version 1.2 March 10, 2021                                                            
+*/                                                                                                                                                                                 
+
 #include "stdafx.h"
 #include "Hex_Local_Matrix.h"
 #include "gauss_3.h"
@@ -31,7 +50,7 @@ void Hex_Local_Matrix::Calc_J(int n_of_point)
 {
 	int i, j;
 
-	if (type_of_hex <= 30) // параллелепипед
+	if (type_of_hex <= 30) // parallelepiped
 	{
 		if(JforParCalc)
 			return;
@@ -55,13 +74,13 @@ void Hex_Local_Matrix::Calc_J(int n_of_point)
 
 		JforParCalc = true;
 	} 
-	else // шестигранник
+	else // hexahedron
 	{
 	for(i=0; i<3; i++)
 	for(j=0; j<3; j++)
 		J[i][j] = 0.0;
 
-	// эл-ты матрицы якоби
+	// elements of the Jacobian matrix
 	for(i=0; i<8; i++)
 	{
 		J[0][0] += x[i]*gauss_3_d_phi[n_of_point][i][0]; //  d_xi[i];
@@ -77,14 +96,14 @@ void Hex_Local_Matrix::Calc_J(int n_of_point)
 		J[2][2] += z[i]*gauss_3_d_phi[n_of_point][i][2]; //  d_zeta[i];
 	}
 
-	// вычисл€ем якобиан (определитель)
+	// calculate Jacobian (determinant)
 	this->det_J = J[0][0]*J[1][1]*J[2][2] - J[0][0]*J[1][2]*J[2][1] + J[1][0]*J[2][1]*J[0][2]
 	    - J[1][0]*J[0][1]*J[2][2] + J[2][0]*J[0][1]*J[1][2] - J[2][0]*J[1][1]*J[0][2];
 
-	// модуль якобиана
+	// Jacobian modulus
 	this->det_J_abs = fabs(det_J);
 
-	// матрица, обратна€ к матрице якоби (и транспонированна€)
+	// matrix inverse to Jacobi matrix (and transposed)
 	J_1_T[0][0] = (J[1][1]*J[2][2]-J[2][1]*J[1][2])/det_J;
 	J_1_T[1][0] =  (J[2][1]*J[0][2]-J[0][1]*J[2][2])/det_J;
     J_1_T[2][0] = (J[0][1]*J[1][2]-J[1][1]*J[0][2])/det_J;
@@ -189,15 +208,15 @@ void Hex_Local_Matrix::CalcMassMatrix()
 		int i, j, i1, j1;
 		double gauss_3_mult;
 
-		for(i=0; i<8; i++) // сначала обнул€ем
+		for(i=0; i<8; i++) // first set 0
 		{
 			for(j=0; j<8; j++)
 				b[i][j] = 0.0;
 		}
 
-		for(i=0; i<27; i++) // по числу точек интегрировани€
+		for(i=0; i<27; i++) // by the number of integration points
 		{
-			Calc_J(i); // вычисл€ем якобиан
+			Calc_J(i); // calculate Jacobian
 			gauss_3_mult = gauss_3_A_all[i]*det_J_abs; // A_i*A_j*A_k*|J|
 
 			for(i1=0; i1<8; i1++)

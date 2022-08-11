@@ -1,13 +1,26 @@
+/**
+ * GENERAL REMARKS
+ *
+ *  This code is freely available under the following conditions:
+ *
+ *  1) The code is to be used only for non-commercial purposes.
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer.
+ *
+ *              MTCalc_with_DFP_COCR
+ *  Header file for OutputResultant3d.cpp
+ *
+ *  Written by Prof. Marina G. Persova and Ph.D. Petr A. Domnikov 
+ *  Novosibirsk State Technical University,
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia
+ *  mpersova@mail.ru
+ *  Version 1.5 December 17, 2020
+*/
+
 #pragma once
 #include "OutputArbitrary.h"
 #include "Subdomain.h"
 #include "AbstractFEM.h"
-
-struct _Plane_{
-	pv::Vector N;
-	double D;
-	void set_D(pv::Point3D t){D=-(N.x()*t.x()+N.y()*t.y()+N.z()*t.z());}
-};
 
 struct ResCoef8
 {
@@ -21,21 +34,20 @@ struct ResCoef8
 	}
 };
 
-//------------------------------------------------------------------------
 class OutputResultant3d
 {
 private:
-	vector<Subdomain> sub;					// подобласти по материалам
+	vector<Subdomain> sub;
 	
 	int n_pointres;
 	double (*pointres)[3];
 
-	AbstractFEM3D *TaskCalcMesh;			// сетка на которой считалась задача
+	AbstractFEM3D *TaskCalcMesh;
 
-	int levelNeighbors;						// сколько соседних элементов включать в подобласть
+	int levelNeighbors;
 	
-	vector<long> ElemForPoint;				// для каждого приёмника хранит номер эл-та, куда он попадает
-	vector< vector<long> > PointsForElem;	// для каждого эл-та хранит номера приёмников, к-рые в него попадают
+	vector<long> ElemForPoint;
+	vector< vector<long> > PointsForElem;
 	vector<long_double> PointresXsorted; 
 	vector<long_double> PointresYsorted;
 	vector<long_double> PointresZsorted;
@@ -62,4 +74,3 @@ public:
 
 	vector<ResCoef8> vRC;
 };
-//------------------------------------------------------------------------

@@ -1,3 +1,21 @@
+//=======================================================================
+//   GENERAL REMARKS
+//
+//   This code is freely available under the following conditions:
+//
+//   1) The code is to be used only for non-commercial purposes.
+//   2) No changes and modifications to the code without prior permission of the developer.
+//   3) No forwarding the code to a third party without prior permission of the developer.// To compile, use Microsoft Visual Studio C++ compiler
+//
+//   This code is used to prepare data for the calcimpedance.exe file,
+//   call calcimpedance.exe and change the format 
+//   of the results of calcimpedance.exe.
+//
+//   Dr. Marina Persova
+//   Novosibirsk State Technical University   
+//   Novosibirsk, 630073, Russia
+//   mpersova@mail.ru
+
 #include "stdafx.h"
 #include "open_close.h"
 #include "utils.h"
@@ -12,6 +30,7 @@ const int size_f=sizeof(float);
 
 char PathToInstallDir[1024];
 
+// Creating Processes ms-help://MS.VSCC.v90/MS.MSDNQTR.v90.en/dllproc/base/creating_processes.htm
 int CreateProcessForEXE(char *cmdline, char *workdir)
 {
 	int retp;
@@ -47,6 +66,7 @@ int CreateProcessForEXE(char *cmdline, char *workdir)
 	return retp;
 }
 
+// Shell to call CreateProcessForEXE
 void run(char *cmd)
 {
 	int retp;
@@ -59,6 +79,7 @@ void run(char *cmd)
 	}
 }
 
+// Solving of SLAE by the Gauss (LU-decomposition) method
 int SolveGauss(complex<double> *c_A,complex<double> *c_b,int slae_size,complex<double> *(&L),complex<double> *(&f),complex<double> *(&aa))
 {
 	const int b = 32;
@@ -77,6 +98,7 @@ int SolveGauss(complex<double> *c_A,complex<double> *c_b,int slae_size,complex<d
 const int n=6;
 const int nsq=n*n;
 
+// Allocate memmory for real fields
 void GetMemmory(vector<vector<double>> &Fields,int nrec,int nfrq)
 {
 	double zero=0.0;
@@ -90,7 +112,7 @@ void GetMemmory(vector<vector<double>> &Fields,int nrec,int nfrq)
 	}
 }
 
-
+// Allocate memmory for complex fields
 void GetMemmory(vector<vector<complex<double>>> &Fields,int nrec,int nfrq)
 {
 	complex<double> zero(0.0,0.0);
@@ -104,6 +126,7 @@ void GetMemmory(vector<vector<complex<double>>> &Fields,int nrec,int nfrq)
 	}
 }
 
+// Reading file with E or H fields
 void ReadFrqFile(vector<vector<complex<double>>> &Fields,int nrec,int ifrq,char *fnameR,char *fnameI)
 {
 	ifstream infr,infi;
@@ -124,155 +147,7 @@ void ReadFrqFile(vector<vector<complex<double>>> &Fields,int nrec,int ifrq,char 
 	StopIfErrorReturn(CloseInputFile(infi,fni),"CloseInputFile");
 }
 
-void ReadAllFile(vector<vector<complex<double>>> &Fields,int nrec,int nfrq,char *fnameR,char *fnameI)
-{
-	ifstream infr,infi;
-	int ifrq,irec;
-	double u,v,tmpd;
-	StopIfErrorReturn(OpenInputFile(infr,fnameR),"OpenInputFile");
-	StopIfErrorReturn(OpenInputFile(infi,fnameI),"OpenInputFile");
-	Fields.resize(nrec);
-	for(irec=0;irec<nrec;irec++)
-	{
-		vector<complex<double>> &fi=Fields[irec];
-		fi.resize(nfrq);
-		infr.ignore(1000,'\n');
-		infr.ignore(1000,'\n');
-		infr.ignore(1000,'\n');
-		infr.ignore(1000,'\n');
-		infr.ignore(1000,'\n');
-		infr.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		infi.ignore(1000,'\n');
-		for(ifrq=0;ifrq<nfrq;ifrq++)
-		{
-			infr>>tmpd>>tmpd>>tmpd>>u;
-			infi>>tmpd>>tmpd>>tmpd>>v;
-			fi[ifrq]=complex<double>(u,v);
-		}
-		if(nfrq)
-		{
-			infr.ignore(1000,'\n');
-			infi.ignore(1000,'\n');
-		}
-	}
-	StopIfErrorReturn(CloseInputFile(infr,fnameR),"CloseInputFile");
-	StopIfErrorReturn(CloseInputFile(infi,fnameI),"CloseInputFile");
-}
-
-void ReadAllFile(vector<vector<complex<double>>> &Fx,vector<vector<complex<double>>> &Fy,vector<vector<complex<double>>> &Fz,
-				 int nrec,int nfrq,char *fname,char c,int ia,bool fdmu)
-{
-	ifstream inf;
-	int ifrq,irec;
-	double u[3],v[3];
-	char buf[256];
-	
-	Fx.resize(nrec);
-	Fy.resize(nrec);
-	Fz.resize(nrec);
-	for(irec=0;irec<nrec;irec++)
-	{
-		Fx[irec].resize(nfrq);
-		Fy[irec].resize(nfrq);
-		Fz[irec].resize(nfrq);
-	}
-	for(ifrq=0;ifrq<nfrq;ifrq++)
-	{
-		if(!ia)
-			sprintf(buf,"%s%c_s0f%d",fname,c,ifrq);
-		else
-			sprintf(buf,"%s%c_s0f%d_%d",fname,c,ifrq,ia);
-
-		inf.open(buf);
-		if(!inf)
-		{
-			logfile<<"Error in open file "<<buf<<endl;
-			exit(1);
-		}
-
-		for(irec=0;irec<nrec;irec++)
-		{
-			inf>>u[0]>>u[1]>>u[2]>>v[0]>>v[1]>>v[2];
-
-			if(fdmu)
-			{
-				u[0]/=MU;
-				u[1]/=MU;
-				u[2]/=MU;
-
-				v[0]/=MU;
-				v[1]/=MU;
-				v[2]/=MU;
-			}
-			
-			Fx[irec][ifrq]=complex<double>(u[0],v[0]);
-			Fy[irec][ifrq]=complex<double>(u[1],v[1]);
-			Fz[irec][ifrq]=complex<double>(u[2],v[2]);
-		}
-
-		inf.close();
-		inf.clear();
-	}
-}
-
-void ReadAllFile(vector<vector<complex<double>>> &Fx,vector<vector<complex<double>>> &Fy,
-				 int nrec,int nfrq,char *fname,char c,int ia,bool fdmu)
-{
-	ifstream inf;
-	int ifrq,irec;
-	double u[3],v[3];
-	char buf[256];
-	
-	Fx.resize(nrec);
-	Fy.resize(nrec);
-	for(irec=0;irec<nrec;irec++)
-	{
-		Fx[irec].resize(nfrq);
-		Fy[irec].resize(nfrq);
-	}
-	for(ifrq=0;ifrq<nfrq;ifrq++)
-	{
-		if(!ia)
-			sprintf(buf,"%s%c_s0f%d",fname,c,ifrq);
-		else
-			sprintf(buf,"%s%c_s0f%d_%d",fname,c,ifrq,ia);
-
-		inf.open(buf);
-		if(!inf)
-		{
-			logfile<<"Error in open file "<<buf<<endl;
-			exit(1);
-		}
-
-		for(irec=0;irec<nrec;irec++)
-		{
-			inf>>u[0]>>u[1]>>u[2]>>v[0]>>v[1]>>v[2];
-
-			if(fdmu)
-			{
-				u[0]/=MU;
-				u[1]/=MU;
-				u[2]/=MU;
-
-				v[0]/=MU;
-				v[1]/=MU;
-				v[2]/=MU;
-			}
-			
-			Fx[irec][ifrq]=complex<double>(u[0],v[0]);
-			Fy[irec][ifrq]=complex<double>(u[1],v[1]);
-		}
-
-		inf.close();
-		inf.clear();
-	}
-}
-
+// Writing real part of Tensors in sprcial format file
 void WriteAllFileReal(vector<vector<complex<double>>> &Field,int nrec,int nfrq,vector<double> &sfreq,
 				  vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,const char *fname,const char *Leg)
 {
@@ -304,6 +179,7 @@ void WriteAllFileReal(vector<vector<complex<double>>> &Field,int nrec,int nfrq,v
 	outr.clear();
 }
 
+// Writing imaginary part of Tensors in sprcial format file
 void WriteAllFileImag(vector<vector<complex<double>>> &Field,int nrec,int nfrq,vector<double> &sfreq,
 				  vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,const char *fname,const char *Leg)
 {
@@ -334,39 +210,7 @@ void WriteAllFileImag(vector<vector<complex<double>>> &Field,int nrec,int nfrq,v
 	outr.clear();
 }
 
-void MultMatrixes(complex<double> *A,complex<double> *B,complex<double> *R,int n,int m)
-{
-	int i,j,k,in,im,kn;
-	for(i=0;i<n;i++)
-	{
-		in=i*n;
-		im=i*m;
-		for(j=0;j<n;j++)
-		{
-			R[in+j]=0.0;
-			for(k=0;k<m;k++)
-			{
-				kn=k*n;
-				R[in+j]+=A[im+k]*B[kn+j];
-			}
-		}
-	}
-}
-
-void MultMatrixVector(complex<double> *A,complex<double> *b,complex<double> *r,int n)
-{
-	int i,j,in;
-	for(i=0;i<n;i++)
-	{
-		in=i*n;
-		r[i]=0.0;
-		for(j=0;j<n;j++)
-		{
-			r[i]+=A[in+j]*b[j];
-		}
-	}
-}
-
+// Reading Tensor 2x2
 void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,vector<vector<double>> &Zxy,
 				 vector<vector<double>> &Zyx,vector<vector<double>> &Zyy,
 				 char *Fxx,char *Fxy,char *Fyx,char *Fyy)
@@ -401,6 +245,7 @@ void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,vector<vector<do
 	StopIfErrorReturn(CloseInputFile(infyy,Fyy),"CloseInputFile");
 }
 
+// Reading diagonal Tensor
 void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,vector<vector<double>> &Zyy,char *Fxx,char *Fyy)
 {
 	int i,j;
@@ -425,6 +270,7 @@ void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,vector<vector<do
 	StopIfErrorReturn(CloseInputFile(infyy,Fyy),"CloseInputFile");
 }
 
+// Reading Tensor 1x1
 void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,char *Fxx)
 {
 	int i,j;
@@ -445,6 +291,7 @@ void ReadZTensor(int nrec,int nfreq,vector<vector<double>> &Zxx,char *Fxx)
 	StopIfErrorReturn(CloseInputFile(infxx,Fxx),"CloseInputFile");
 }
 
+// Writing 
 void WriteZTensor(int nrec,vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,int nfreq,vector<double> &sfreq,vector<vector<double>> &Zxx,
 				  vector<vector<double>> &Zxy,vector<vector<double>> &Zyx,vector<vector<double>> &Zyy,char *Fname,char *Leg)
 {
@@ -467,72 +314,7 @@ void WriteZTensor(int nrec,vector<double> &Xr,vector<double> &Yr,vector<double> 
 	}
 }
 
-void WriteZTensor1(int nrec,vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,int nfreq,vector<double> &sfreq,vector<vector<double>> &Zxx,
-				  vector<vector<double>> &Zxy,vector<vector<double>> &Zyx,vector<vector<double>> &Zyy,char *Fname,char *Leg)
-{
-	int i,j;
-	ofstream ofp;
-	for(i=0;i<nrec;i++)
-	{
-		sprintf(str,"%s.%d.txt",Fname,i+1);
-		StopIfErrorReturn(OpenOutputFile(ofp,str),"OpenOutputFile");
-		ofp<<scientific<<setprecision(7);
-		ofp<<0.0<<'\t'<<0.0<<'\t'<<0.0<<'\n';
-		ofp<<Xr[i]<<'\t'<<Yr[i]<<'\t'<<Zr[i]<<'\n';
-		ofp<<'\n';
-		ofp<<Leg<<'\n';
-		for(j=0;j<nfreq;j++)
-		{
-			ofp<<sfreq[j]<<'\t'<<Zxx[i][j]<<'\t'<<Zxy[i][j]-360.0<<'\t'<<Zyy[i][j]<<'\t'<<Zyx[i][j]<<'\n';
-		}
-		StopIfErrorReturn(CloseOutputFile(ofp,str),"CloseOutputFile");
-	}
-}
-
-void WriteZTensor(int nrec,vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,int nfreq,vector<double> &sfreq,
-				  vector<vector<double>> &Zxx,vector<vector<double>> &Zyy,char *Fname,char *Leg)
-{
-	int i,j;
-	ofstream ofp;
-	for(i=0;i<nrec;i++)
-	{
-		sprintf(str,"%s.%d.txt",Fname,i+1);
-		StopIfErrorReturn(OpenOutputFile(ofp,str),"OpenOutputFile");
-		ofp<<scientific<<setprecision(7);
-		ofp<<0.0<<'\t'<<0.0<<'\t'<<0.0<<'\n';
-		ofp<<Xr[i]<<'\t'<<Yr[i]<<'\t'<<Zr[i]<<'\n';
-		ofp<<'\n';
-		ofp<<Leg<<'\n';
-		for(j=0;j<nfreq;j++)
-		{
-			ofp<<sfreq[j]<<'\t'<<Zxx[i][j]<<'\t'<<Zyy[i][j]<<'\n';
-		}
-		StopIfErrorReturn(CloseOutputFile(ofp,str),"CloseOutputFile");
-	}
-}
-
-void WriteZTensor(int nrec,vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,int nfreq,vector<double> &sfreq,
-				  vector<vector<double>> &Zxx,char *Fname,char *Leg)
-{
-	int i,j;
-	ofstream ofp;
-	for(i=0;i<nrec;i++)
-	{
-		sprintf(str,"%s.%d.txt",Fname,i+1);
-		StopIfErrorReturn(OpenOutputFile(ofp,str),"OpenOutputFile");
-		ofp<<scientific<<setprecision(7);
-		ofp<<0.0<<'\t'<<0.0<<'\t'<<0.0<<'\n';
-		ofp<<Xr[i]<<'\t'<<Yr[i]<<'\t'<<Zr[i]<<'\n';
-		ofp<<'\n';
-		ofp<<Leg<<'\n';
-		for(j=0;j<nfreq;j++)
-		{
-			ofp<<sfreq[j]<<'\t'<<Zxx[i][j]<<'\n';
-		}
-		StopIfErrorReturn(CloseOutputFile(ofp,str),"CloseOutputFile");
-	}
-}
-
+// Writing real Tensor in special format
 void WriteToEdsAll(ofstream &ofp,ofstream &ofm,int nrec,int nfrq,vector<double> &freq,
 				   vector<double> &Xr,vector<double> &Yr,vector<double> &Zr,
 				   vector<vector<double>> &Zxx,vector<vector<double>> &Zyy,

@@ -1,3 +1,32 @@
+/**                                                                                                                        
+ * GENERAL REMARKS                                                                                                         
+ *                                                                                                                         
+ *  This code is freely available under the following conditions:                                                          
+ *                                                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                                                            
+ *  2) No changes and modifications to the code without prior permission of the developer.                                 
+ *  3) No forwarding the code to a third party without prior permission of the developer.                                  
+ *                                                                                                                         
+ *  			MTCalc_with_DFP_COCR                                                                               
+ *  This file contains some basic routines for generation of local matrices and local vector of the right-hand side.       
+ *  Calculation of values of basis functions inside a finite element.                                                      
+ *  The T_Brick class contains functions for working with vector (edge-elements) for hexahedron mesh:                      
+ * 	- calculation of local stiffness and mass matrices;                                                                
+ * 	- calculation of the vector of the right-hand side through E_normal;                                               
+ *	- calculation of the Jacobi matrix at Gauss points and at an arbitrary point inside the hexahedron;                
+ * 	- output a solution and a curl inside a hexahedron or parallelepiped;                                             
+ * Nodal basis functions are needed here to calculate the transformation.                                                  
+ * Template element [-1, 1]^3. (for both nodal and vector).                                                                
+ * Vector basis functions with tangential components 2/hx, 2/hy, 2/hz along edges.                                         
+ *                                                                                                                         
+ *  Written by Prof. Yuri G. Soloveichik, Prof. Marina G. Persova,  Ph.D. Petr A. Domnikov, Ph.D. Yulia I. Koshkina        
+ *  Novosibirsk State Technical University,                                                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                                      
+ *  Corresponding author:                                                                                                  
+ *  E-mail: p_domnikov@mail.ru (Petr A. Domnikov)                                                                          
+ *  Version 1.3 March 30, 2021                                                                                             
+*/                                                                                                                         
+
 #include "stdafx.h"
 #include "T_Brick.h"
 #include "gauss_3.h"
@@ -5,11 +34,6 @@
 #include "gauss3vec2d.h"
 
 extern ofstream logfile;
-
-//-------------------------------------------------------------------------------
-//--- Этот конструктор используется в том случае, если требуется только 
-//--- выдать значение внутри шестигранника, посчитать матрицу Якоби и т.д.
-//-------------------------------------------------------------------------------
 T_Brick::T_Brick(double *x_coords, double *y_coords, double *z_coords, long type_of_hex)
 {
 	for (long i=0; i<8; i++)
@@ -63,7 +87,7 @@ T_Brick::T_Brick(long num, long (*nver)[14], double (*xyz)[3])
 	}
 }
 //-------------------------------------------------------------------------------
-//------------    конструктор для МТЗ   -----------------------------------------
+//------------    constructor for MT   -----------------------------------------
 //-------------------------------------------------------------------------------
 T_Brick::T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], double (*xyz)[3], long *nvkat,
 	double *sigma3d, double *sigma0, double *mu3d,  double omega,
@@ -112,7 +136,7 @@ T_Brick::T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], d
 	this->cos_1d = cos_1d;
 }
 //-------------------------------------------------------------------------------
-//----  конструктор для нестационарной задачи
+//---- constructor for non-stationary task
 //-------------------------------------------------------------------------------
 T_Brick::T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], double (*xyz)[3], long *nvkat,
 		double *sigma_table,  double *sigma0_table, double *mu_table, 
@@ -157,7 +181,7 @@ T_Brick::T_Brick(long num, long (*nver)[14], long (*ed)[25], long (*edges)[2], d
 	this->n_mat = nvkat[num];
 }
 //-------------------------------------------------------------------------------
-//------  Деструктор
+//------  Destructor
 //-------------------------------------------------------------------------------
 T_Brick::~T_Brick()
 {
@@ -174,7 +198,7 @@ void T_Brick::Calc_ss0()
 	}
 }
 //-------------------------------------------------------------------------------
-//------- Вычислить локальную матрицу жёсткости на параллелепипеде --------------
+//------- Calculate the local stiffness matrix on the parallelepiped --------------
 //-------------------------------------------------------------------------------
 void T_Brick::Compute_Local_Matrix_B()
 {
@@ -482,7 +506,7 @@ void T_Brick::Compute_Local_Matrix_C()
 	}
 }
 //---------------------------------------------------------------------------------
-//-------   Вычислить локальную матрицу и вектор для нестационарной задачии -------
+//-------   Calculate local matrix and vector for non-stationary problem -------
 //---------------------------------------------------------------------------------
 void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 {
@@ -490,7 +514,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 
 	switch(what_compute)
 	{
-	case 1: // вычислить матрицу массы и вектор
+	case 1: // calculate the mass matrix and vector
 		Calc_local_matrix_c_for_hexahedron();
 
 		for(i=0; i<12; i++)
@@ -501,7 +525,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 		}
 		break;
 
-	case 2: // если требуется только прибавить матрицу жёсткости
+	case 2: // if you only need to add a stiffness matrix
 		Calc_local_matrix_b_for_hexahedron();
 
 		for(i=0; i<12; i++)
@@ -512,8 +536,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 		}
 		break;
 
-//  [24/3/2008 Domnikov]
-	case 3: // собрать матрицу массы с коэффициентом диэлектрической проницаемости
+	case 3: // assemble mass matrix with dielectric coefficient    
 		Calc_local_matrix_c_for_hexahedron();
 
 		for(i=0; i<12; i++)
@@ -527,8 +550,8 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 	}
 }
 //-------------------------------------------------------------------------------
-//-----   Вычислить локальный вектор правой части для нестационарной задачи   ---
-//-----   через En (нормальное поле, заданное на рёбрах)   ----------------------
+// Calculate the local vector of the right-hand side for the non-stationary problem 
+// in terms of En (the normal field given on the edges)
 //-------------------------------------------------------------------------------
 void T_Brick::Compute_Local_Vector_For_Anomal_Problem()
 {
@@ -547,7 +570,8 @@ void T_Brick::Compute_Local_Vector_For_Anomal_Problem()
 	Mult_Plot((double*)c, f_re, g, 12);
 }
 //------------------------------------------------------------------------
-// вычисление вектора правой части через нормальное поле, в случае, когда все коэф-ты разрывны
+// calculation of the vector of the right-hand side through the normal field, 
+// in the case when all the coefficients are discontinuous
 //------------------------------------------------------------------------
 void T_Brick::ComputeLocalVectorMuEpsSigma(double *An, double *d2An)
 {
@@ -575,19 +599,19 @@ void T_Brick::ComputeLocalVectorMuEpsSigma(double *An, double *d2An)
 		g[i] = g_mu[i] + g_sig[i];
 }
 //-------------------------------------------------------------------------------
-//---- Вычислить матрицу Якоби в точке Гаусса с номером n_of_point  -------------
+// Calculate the Jacobian matrix at the Gauss point with the number n_of_point
 //-------------------------------------------------------------------------------
 void T_Brick::Calc_J(int n_of_point)
 {
 	long i, j;
 
-	if (type_of_hex > 30) //  шестигранник
+	if (type_of_hex > 30) // hexahedron
 	{
 		for(i=0; i<3; i++)
 			for(j=0; j<3; j++)
 				J[i][j] = 0.0;
 
-		// эл-ты матрицы Якоби
+		// elements of the Jacobian matrix
 		for(i=0; i<8; i++)
 		{
 			J[0][0] += x[i]*gauss_3_d_phi[n_of_point][i][0]; //  d_xi[i];
@@ -603,14 +627,14 @@ void T_Brick::Calc_J(int n_of_point)
 			J[2][2] += z[i]*gauss_3_d_phi[n_of_point][i][2]; //  d_zeta[i];
 		}
 
-		// вычисляем Якобиан (определитель)
+		// calculate Jacobian (determinant)
 		det_J = J[0][0]*J[1][1]*J[2][2] - J[0][0]*J[1][2]*J[2][1] + J[1][0]*J[2][1]*J[0][2]
 		- J[1][0]*J[0][1]*J[2][2] + J[2][0]*J[0][1]*J[1][2] - J[2][0]*J[1][1]*J[0][2];
 
-		// модуль Якобиана
+		// Jacobian modulus
 		det_J_abs = fabs(det_J);
 
-		// матрица, обратная к матрице Якоби (и транспонированная)
+		// matrix inverse to Jacobi matrix (and transposed)
 		J_1_T[0][0] = J_1[0][0] = (J[1][1]*J[2][2]-J[2][1]*J[1][2])/det_J;
 		J_1_T[1][0] = J_1[0][1] = (J[2][1]*J[0][2]-J[0][1]*J[2][2])/det_J;
 		J_1_T[2][0] = J_1[0][2] = (J[0][1]*J[1][2]-J[1][1]*J[0][2])/det_J;
@@ -621,26 +645,26 @@ void T_Brick::Calc_J(int n_of_point)
 		J_1_T[1][2] = J_1[2][1] = (-J[0][0]*J[2][1]+J[2][0]*J[0][1])/det_J;
 		J_1_T[2][2] = J_1[2][2] = (J[0][0]*J[1][1]-J[1][0]*J[0][1])/det_J;
 	} 
-	else // параллелепипед
+	else // parallelepiped
 	{
 		Calc_J_in_parallelepiped();		
 	}
 }
 //-------------------------------------------------------------------------------
-//---- Вычислить матрицу Якоби в произвольной точке внутри шестигранника --------
+//---- Calculate the Jacobian matrix at an arbitrary point inside the hexahedron --------
 //-------------------------------------------------------------------------------
 void T_Brick::Calc_J(double xi, double eta, double zeta)
 {
 	long i, j;
 	double dphi_x, dphi_y, dphi_z;
 
-	if (type_of_hex > 30) // шестигранник
+	if (type_of_hex > 30) // hexahedron
 	{
 		for(i=0; i<3; i++)
 			for(j=0; j<3; j++)
 				J[i][j] = 0.0;
 
-		// эл-ты матрицы Якоби
+		// elements of the Jacobian matrix
 		for(i=0; i<8; i++)
 		{
 			dphi_x = dPhi_node(i, 0, xi, eta, zeta);
@@ -660,14 +684,14 @@ void T_Brick::Calc_J(double xi, double eta, double zeta)
 			J[2][2] += z[i]*dphi_z; //  d_zeta[i];
 		}
 
-		// вычисляем Якобиан (определитель)
+		// calculate Jacobian (determinant)
 		det_J = J[0][0]*J[1][1]*J[2][2] - J[0][0]*J[1][2]*J[2][1] + J[1][0]*J[2][1]*J[0][2]
 		- J[1][0]*J[0][1]*J[2][2] + J[2][0]*J[0][1]*J[1][2] - J[2][0]*J[1][1]*J[0][2];
 
-		// модуль Якобиана
+		// Jacobian modulus
 		det_J_abs = fabs(det_J);
 
-		// матрица, обратная к матрице Якоби (и транспонированная)
+		// matrix inverse to Jacobi matrix (and transposed)
 		J_1_T[0][0] = J_1[0][0] = (J[1][1]*J[2][2]-J[2][1]*J[1][2])/det_J;
 		J_1_T[1][0] = J_1[0][1] = (J[2][1]*J[0][2]-J[0][1]*J[2][2])/det_J;
 		J_1_T[2][0] = J_1[0][2] = (J[0][1]*J[1][2]-J[1][1]*J[0][2])/det_J;
@@ -679,7 +703,7 @@ void T_Brick::Calc_J(double xi, double eta, double zeta)
 		J_1_T[2][2] = J_1[2][2] = (J[0][0]*J[1][1]-J[1][0]*J[0][1])/det_J;
 
 	} 
-	else // параллелепипед
+	else // parallelepiped
 	{
 		Calc_J_in_parallelepiped();
 	}
@@ -709,13 +733,13 @@ void T_Brick::Calc_J_Node_2(double xi, double eta, double zeta)
 	long i, j;
 	double dphi_x, dphi_y, dphi_z;
 
-	if (type_of_hex > 30) // шестигранник
+	if (type_of_hex > 30) // hexahedron
 	{
 		for(i=0; i<3; i++)
 			for(j=0; j<3; j++)
 				J[i][j] = 0.0;
 
-		// эл-ты матрицы Якоби
+		// elements of the Jacobian matrix
 		for(i=0; i<8; i++)
 		{
 			dphi_x = dPhi_node_2(i, 0, xi, eta, zeta);
@@ -734,12 +758,12 @@ void T_Brick::Calc_J_Node_2(double xi, double eta, double zeta)
 			J[2][1] += z[i]*dphi_y; //  d_eta[i];
 			J[2][2] += z[i]*dphi_z; //  d_zeta[i];
 		}
-		// вычисляем Якобиан (определитель)
+		// calculate Jacobian (determinant) 
 		det_J = J[0][0]*J[1][1]*J[2][2] - J[0][0]*J[1][2]*J[2][1] + J[1][0]*J[2][1]*J[0][2]
 		- J[1][0]*J[0][1]*J[2][2] + J[2][0]*J[0][1]*J[1][2] - J[2][0]*J[1][1]*J[0][2];
-		// модуль Якобиана
+		// Jacobian modulus
 		det_J_abs = fabs(det_J);
-		// матрица, обратная к матрице Якоби (и транспонированная)
+		// matrix inverse to Jacobi matrix (and transposed)
 		J_1_T[0][0] = J_1[0][0] = (J[1][1]*J[2][2]-J[2][1]*J[1][2])/det_J;
 		J_1_T[1][0] = J_1[0][1] = (J[2][1]*J[0][2]-J[0][1]*J[2][2])/det_J;
 		J_1_T[2][0] = J_1[0][2] = (J[0][1]*J[1][2]-J[1][1]*J[0][2])/det_J;
@@ -751,18 +775,18 @@ void T_Brick::Calc_J_Node_2(double xi, double eta, double zeta)
 		J_1_T[2][2] = J_1[2][2] = (J[0][0]*J[1][1]-J[1][0]*J[0][1])/det_J;
 
 	} 
-	else // параллелепипед
+	else // parallelepiped
 	{
-		// эл-ты матрицы Якоби
+		// elements of the Jacobian matrix
 		J[0][0] = hx;
 		J[1][1] = hy;
 		J[2][2] = hz;
 		J[0][1] = J[0][2] = J[1][0] = J[1][2] = J[2][0] = J[2][1] = 0.0;
-		// вычисляем Якобиан (определитель)
+		// calculate Jacobian (determinant)
 		det_J = hx*hy*hz;
-		// модуль Якобиана
+		// Jacobian modulus
 		det_J_abs = fabs(det_J);
-		// матрица, обратная к матрице Якоби (и транспонированная)
+		// matrix inverse to Jacobi matrix (and transposed)
 		J_1_T[0][0] = J_1[0][0] = 1.0/hx;
 		J_1_T[1][1] = J_1[1][1] = 1.0/hy;
 		J_1_T[2][2] = J_1[2][2] = 1.0/hz;
@@ -772,20 +796,20 @@ void T_Brick::Calc_J_Node_2(double xi, double eta, double zeta)
 }
 
 //-----------------------------------------------------------------------------
-//----- Вычислить матрицу Якоби в точках Гаусса, расположенных на верхней -----
-//----- грани шестигранника (это нужно для выдачи) ----------------------------
+//----- Calculate the Jacobian matrix at the Gauss points located
+//  on the upper face of the hexahedron (this is necessary for issuing) -----
 //-----------------------------------------------------------------------------
 void T_Brick::Calc_J_on_face(int n_of_point)
 {
 	long i, j;
 
-	if (type_of_hex > 30) // шестигранник
+	if (type_of_hex > 30) // hexahedron
 	{
 		for(i=0; i<3; i++)
 			for(j=0; j<3; j++)
 				J[i][j] = 0.0;
 
-		// эл-ты матрицы Якоби
+		// elements of the Jacobian matrix 
 		for(i=0; i<8; i++)
 		{
 			J[0][0] += x[i]*gauss_3_d_phi_face[n_of_point][i][0]; //  d_xi[i];
@@ -801,14 +825,14 @@ void T_Brick::Calc_J_on_face(int n_of_point)
 			J[2][2] += z[i]*gauss_3_d_phi_face[n_of_point][i][2]; //  d_zeta[i];
 		}
 
-		// вычисляем Якобиан (определитель)
+		// calculate Jacobian (determinant)
 		det_J = J[0][0]*J[1][1]*J[2][2] - J[0][0]*J[1][2]*J[2][1] + J[1][0]*J[2][1]*J[0][2]
 		- J[1][0]*J[0][1]*J[2][2] + J[2][0]*J[0][1]*J[1][2] - J[2][0]*J[1][1]*J[0][2];
 
-		// модуль Якобиана
+		//  Jacobian modulus
 		det_J_abs = fabs(det_J);
 
-		// матрица, обратная к матрице Якоби (и транспонированная)
+		// matrix inverse to Jacobi matrix (and transposed)
 		J_1_T[0][0] = J_1[0][0] = (J[1][1]*J[2][2]-J[2][1]*J[1][2])/det_J;
 		J_1_T[1][0] = J_1[0][1] = (J[2][1]*J[0][2]-J[0][1]*J[2][2])/det_J;
 		J_1_T[2][0] = J_1[0][2] = (J[0][1]*J[1][2]-J[1][1]*J[0][2])/det_J;
@@ -819,13 +843,13 @@ void T_Brick::Calc_J_on_face(int n_of_point)
 		J_1_T[1][2] = J_1[2][1] = (-J[0][0]*J[2][1]+J[2][0]*J[0][1])/det_J;
 		J_1_T[2][2] = J_1[2][2] = (J[0][0]*J[1][1]-J[1][0]*J[0][1])/det_J;
 	} 
-	else // параллелепипед
+	else // parallelepiped
 	{
 		Calc_J_in_parallelepiped();
 	}
 }
 //---------------------------------------------------------------------------
-//------ Одномерные шаблонные базисные функции на [-1, 1]  ------------------
+//------ One-dimensional template basis functions on [-1, 1]  ------------------
 //---------------------------------------------------------------------------
 double T_Brick::l0(double x)
 {
@@ -837,7 +861,7 @@ double T_Brick::l1(double x)
 	return (x + 1.0)*0.5;
 }
 //-----------------------------------------------------------------------------------------
-//---- Узловые базисные функции на параллелепипеде [-1,1]^3 (нужны для преобразования) ----
+//---- Nodal basis functions on the box [-1,1]^3 (needed for transformation) ----
 //-----------------------------------------------------------------------------------------
 double T_Brick::Phi_node(long i, double x, double y, double z)
 {
@@ -905,8 +929,8 @@ double T_Brick::dPhi_node_2(long i, long j, double xi, double eta, double zeta)
 	}
 }
 //-------------------------------------------------------------------------------
-//--- Производные от узловых базисных функций на параллелепипеде [-1, 1]^3 ------
-//--- (нужны для преобразования) ------------------------------------------------
+//--- Derivatives of nodal basis functions on the box [-1, 1]^3 ------
+//--- (needed for conversion) ------------------------------------------------
 //-------------------------------------------------------------------------------
 double T_Brick::dPhi_node(long i, long j, double xi, double eta, double zeta)
 {
@@ -951,7 +975,7 @@ double T_Brick::dPhi_node(long i, long j, double xi, double eta, double zeta)
 	}
 }
 //-----------------------------------------------------------------------------
-//---- Шаблонные базисные функции на векторном параллелепипеде [-1,1]^3 -------
+//---- Template basis functions on a vector box [-1,1]^3 -------
 //-----------------------------------------------------------------------------
 void T_Brick::Basis_func_on_reference_vec_par(long n, double *in, double *out)
 {
@@ -1025,16 +1049,16 @@ void T_Brick::Basis_func_on_reference_vec_par(long n, double *in, double *out)
 	}
 }
 //---------------------------------------------------------------------------
-//-- Базисная функция на векторном параллелепипеде, взятая с весом.
-//-- Параллелепипед - любой (не шаблонный), но координаты точки - локальные ([-1,1]^3)
+//--Basis function on a vector parallelepiped, taken with a weight.
+//-- Parallelepiped - any (non-template), but point coordinates - local ([-1,1]^3)
 //---------------------------------------------------------------------------
 void T_Brick::Basis_func_on_vec_par(long n, double ves, double *in, double *out)
 {
-	// сначала вычисляем значение базисной функции на шаблонном эл-те
+	// first, we calculate the value of the basis function on the template element
 	Basis_func_on_reference_vec_par(n, in, out);
 
-	// домножаем на вес и диагональный эл-т матрицы Якоби
-	// (т.к. параллелепипед => всю матрицу Якоби вычислять не нужно)
+	// multiply by the weight and the diagonal element of the Jacobi matrix
+	// (because parallelepiped => the entire Jacobi matrix does not need to be calculated)
 	switch(n)
 	{
 	case 0:
@@ -1057,29 +1081,29 @@ void T_Brick::Basis_func_on_vec_par(long n, double ves, double *in, double *out)
 	}
 }
 //---------------------------------------------------------------------------
-//-- Базисная функция на векторном шестиграннике, взятая с весом.
-//-- Шестигранник - любой (не шаблонный), но координаты точки - локальные ([-1,1]^3)
+//-- Basis function on a vector hexahedron, taken with a weight.
+// hexahedron - any (not template), but point coordinates - local ([-1,1]^3) 
 //---------------------------------------------------------------------------
 void T_Brick::Basis_func_on_vec_hex(long n, double ves, double *in, double *out)
 {
-	if(type_of_hex > 30) // векторный шестигранник
+	if(type_of_hex > 30) // vector hexahedron
 	{
 		double temp[3];
 
-		Basis_func_on_reference_vec_par(n, in, temp); // на шаблонном эл-те
+		Basis_func_on_reference_vec_par(n, in, temp); // on template element
 
 		Calc_J(in[0], in[1], in[2]);
-		Mult_Plot((double*)J_1_T, temp, out, 3); // домножаем на J^{-1}
+		Mult_Plot((double*)J_1_T, temp, out, 3); // multiply by J^{-1}
 	}
-	else // векторный параллелепипед (матрицу Якоби вычислять не нужно)
+	else // vector parallelepiped (the Jacobi matrix does not need to be calculated)
 	{
 		Basis_func_on_vec_par(n, ves, in, out);
 	}
 }
 //---------------------------------------------------------------------------
-//---- Вычисляет значение векторного поля внутри произвольного шестигранника
-//---- (суммируются все 12 базисных функций с весами).
-//---- Координаты точки - локальные
+//---- Calculates the value of a vector field inside an arbitrary hexahedron
+//     (all 12 basis functions are summed with weights).
+//     Point coordinates - local 
 //---------------------------------------------------------------------------
 void T_Brick::Calc_value_inside_hex(double *ves, double *in, double *out)
 {
@@ -1089,9 +1113,9 @@ void T_Brick::Calc_value_inside_hex(double *ves, double *in, double *out)
 	for(i=0; i<3; i++)
 		out[i] = 0.0;
 
-	if(type_of_hex > 30) // векторный шестигранник
+	if(type_of_hex > 30) // vector hexahedron
 	{
-		Calc_J(in[0], in[1], in[2]); // матрицу Якоби вычисляем один раз
+		Calc_J(in[0], in[1], in[2]); // Jacobi matrix is calculated once
 
 		for (i=0; i<12; i++)
 		{
@@ -1102,7 +1126,7 @@ void T_Brick::Calc_value_inside_hex(double *ves, double *in, double *out)
 				out[j] += temp2[j]*ves[i];
 		}
 	} 
-	else // векторный параллелепипед
+	else // vector parallelepiped
 	{
 		for (i=0; i<12; i++)
 		{
@@ -1113,9 +1137,9 @@ void T_Brick::Calc_value_inside_hex(double *ves, double *in, double *out)
 	}
 }
 //---------------------------------------------------------------------------
-//---- Вычисляет значение ротора векторного поля внутри произвольного шестигранника
-//---- (суммируются все 12 роторов с весами).
-//---- Координаты точки - локальные
+// Calculates the value of the curl of a vector field inside an arbitrary hexahedron
+// (all 12 curls with weights are summed up).
+// Point coordinates - local 
 //---------------------------------------------------------------------------
 void T_Brick::Calc_rotor_inside_hex(double *ves, double *in, double *out)
 {
@@ -1125,9 +1149,9 @@ void T_Brick::Calc_rotor_inside_hex(double *ves, double *in, double *out)
 	for(i=0; i<3; i++)
 		out[i] = 0.0;
 
-	if(type_of_hex > 30) // векторный шестигранник
+	if(type_of_hex > 30) // vector hexahedron
 	{
-		Calc_J(in[0], in[1], in[2]); // матрицу Якоби вычисляем один раз
+		Calc_J(in[0], in[1], in[2]); // Jacobi matrix is calculated once
 
 		for (i=0; i<12; i++)
 		{
@@ -1141,7 +1165,7 @@ void T_Brick::Calc_rotor_inside_hex(double *ves, double *in, double *out)
 				out[j] += temp2[j]/det_J_abs;
 		}
 	}
-	else // векторный параллелепипед
+	else // vector parallelepiped
 	{
 		for (i=0; i<12; i++)
 		{
@@ -1177,7 +1201,7 @@ void T_Brick::Calc_rotor_inside_hex(double *ves, double *in, double *out)
 	}	
 }
 //---------------------------------------------------------------------------------------
-//---- Вычислить локальную матрицу массы на шестиграннике численно через Гаусс-3 --------
+// Calculate the local mass matrix on the hexahedron numerically in terms of Gauss-3
 //---------------------------------------------------------------------------------------
 void T_Brick::Calc_local_matrix_c_for_hexahedron()
 {
@@ -1185,19 +1209,19 @@ void T_Brick::Calc_local_matrix_c_for_hexahedron()
 	double gauss_3_mult;
 	double sig_phi[3],sig_phi0[3];
 
-	if (type_of_hex > 30) // векторный шестигранник
+	if (type_of_hex > 30) // vector hexahedron
 	{
-		// обнуляем
+		// reset to zero
 		for(i=0; i<12; i++)
 		for(j=0; j<=i; j++)
 			c[i][j] = 0.0;
 
-		for(k=0; k<27; k++) // по числу точек интегрирования
+		for(k=0; k<27; k++) // by the number of integration points
 		{
-			Calc_J(k); // вычисляем матрицу Якоби
+			Calc_J(k); // calculate the Jacobian matrix
 			gauss_3_mult = gauss_3_A_all[k]*det_J_abs; // A_i*A_j*A_k*|J|
 
-			for(j=0; j<12; j++) // базисные ф-ции преобразуются по правилу...
+			for(j=0; j<12; j++)
 				Mult_Plot((double*)J_1_T,
 				(double*)gauss_3_phi_hex_vec[k][j], (double*)phi_all[j], 3);			
 
@@ -1206,12 +1230,12 @@ void T_Brick::Calc_local_matrix_c_for_hexahedron()
 				c[i][j] += Scal((double*)phi_all[i], (double*)phi_all[j], 3)*gauss_3_mult;
 		}
 
-		// матрица симметричная, эл-ты верхнего и нижнего треугольника совпадают
+		// the matrix is symmetrical, the elements of the upper and lower triangles are the same
 		for(i=0; i<12; i++)
 		for(j=i+1; j<12; j++)
 			c[i][j] = c[j][i];
 
-		// обнуляем компоненты тензора анизотропии
+		// reset the anisotropy tensor components
 		for(i=0; i<12; i++)
 			for(j=0; j<=i; j++)
 			{
@@ -1219,19 +1243,19 @@ void T_Brick::Calc_local_matrix_c_for_hexahedron()
 				cSigma0[i][j] = 0.0;
 			}
 
-		for(k=0; k<27; k++) // по числу точек интегрирования
+		for(k=0; k<27; k++) // by the number of integration points
 		{
-			Calc_J(k); // вычисляем матрицу Якоби
+			Calc_J(k); // calculate the Jacobian matrix
 			gauss_3_mult = gauss_3_A_all[k]*det_J_abs; // A_i*A_j*A_k*|J|
 
-			for(j=0; j<12; j++) // базисные ф-ции преобразуются по правилу...
+			for(j=0; j<12; j++) 
 				Mult_Plot((double*)J_1_T,
 				(double*)gauss_3_phi_hex_vec[k][j], (double*)phi_all[j], 3);			
 
 			for(i=0; i<12; i++)
 			{
-				// умножение базисных функций на компоненты тензора анизотропии
-
+				
+				// multiplication of basis functions by anisotropy tensor components
 				sig_phi[0] = Scal(sigmaTensor.val[0], phi_all[i], 3);
 				sig_phi[1] = Scal(sigmaTensor.val[1], phi_all[i], 3);
 				sig_phi[2] = Scal(sigmaTensor.val[2], phi_all[i], 3);
@@ -1248,7 +1272,7 @@ void T_Brick::Calc_local_matrix_c_for_hexahedron()
 			}
 		}
 
-		// матрица симметричная, эл-ты верхнего и нижнего треугольника совпадают
+		// the matrix is symmetrical, the elements of the upper and lower triangles are the same
 		for(i=0; i<12; i++)
 			for(j=i+1; j<12; j++)
 			{
@@ -1256,32 +1280,32 @@ void T_Brick::Calc_local_matrix_c_for_hexahedron()
 				cSigma0[i][j] = cSigma0[j][i];
 			}
 	} 
-	else // векторный параллелепипед
+	else // vector parallelepiped
 	{
 		Compute_Local_Matrix_C();
 	}
 }
 //---------------------------------------------------------------------------------------
-//---- Вычислить локальную матрицу жёсткости на шестиграннике численно через Гаусс-3 ----
+//---- Calculate the local stiffness matrix on the hexahedron numerically using Gauss-3 ----
 //---------------------------------------------------------------------------------------
 void T_Brick::Calc_local_matrix_b_for_hexahedron()
 {
 	long i, j, k;
 	double gauss_3_mult;
 
-	if (type_of_hex > 30) // векторный шестигранник
+	if (type_of_hex > 30) // vector hexahedron 
 	{
-		// обнуляем
+		// reset to zero
 		for(i=0; i<12; i++)
 		for(j=0; j<=i; j++)
 			b[i][j] = 0.0;
 
-		for(k=0; k<27; k++) // по числу точек интегрирования
+		for(k=0; k<27; k++) // by the number of integration points
 		{
-			Calc_J(k); // вычисляем матрицу Якоби
+			Calc_J(k); // calculate the Jacobian matrix 
 			gauss_3_mult = gauss_3_A_all[k]/det_J_abs; // A_i*A_j*A_k/|J|
 
-			for(j=0; j<12; j++) // роторы от базисных ф-ций преобразуются по правилу...
+			for(j=0; j<12; j++) 
 				Mult_Plot((double*)J,
 				(double*)gauss_3_rot_phi_hex_vec[k][j], (double*)rot_all[j], 3);			
 
@@ -1290,26 +1314,26 @@ void T_Brick::Calc_local_matrix_b_for_hexahedron()
 				b[i][j] += Scal((double*)rot_all[i], (double*)rot_all[j], 3)*gauss_3_mult;
 		}
 
-		// матрица симметричная, эл-ты верхнего и нижнего треугольника совпадают
+		// the matrix is symmetrical, the elements of the upper and lower triangles are the same
 		for(i=0; i<12; i++) 
 		for(j=i+1; j<12; j++)
 			b[i][j] = b[j][i];
 	} 
-	else // векторный параллелепипед
+	else // vector parallelepiped
 	{
 		Compute_Local_Matrix_B();
 	}
 }
 //---------------------------------------------------------------------------------
-//--- Вычисляет ротор от базисной функции на параллелепипеде с весом.
-//--- Координаты точки - локальные
+//--- Calculates the curl from the basis function on the parallelepiped with the weight.
+//--- Point coordinates - local
 //---------------------------------------------------------------------------------
 void T_Brick::Rot_of_basis_func_on_vec_par(long n, double ves, double *in, double *out)
 {
 	double x, y, z;
 	double in_global[3];
 	
-	Mapping(in, in_global); // получаем глобальные координаты из локальных
+	Mapping(in, in_global); // get global coordinates from local
 
 	x = in_global[0];
 	y = in_global[1];
@@ -1379,8 +1403,8 @@ void T_Brick::Rot_of_basis_func_on_vec_par(long n, double ves, double *in, doubl
 	}
 }
 //----------------------------------------------------------------------------------------
-//- Вычисляет ротор от векторной базисной функции на шаблонном параллелепипеде [-1,1]^3
-//- Координаты точки - локальные
+//- Calculates curl from vector basis function on template parallelepiped [-1,1]^3
+//- Point coordinates - local
 //----------------------------------------------------------------------------------------
 void T_Brick::Rot_of_basis_func_on_reference_vec_par(long n, double *in, double *out)
 {
@@ -1454,8 +1478,8 @@ void T_Brick::Rot_of_basis_func_on_reference_vec_par(long n, double *in, double 
 	}
 }
 //------------------------------------------------------------------------
-// только x-компонента ротора базисных ф-й на шаблонном параллелепипеде [-1,1]^3
-// Координаты точки - локальные
+// only the x-component of the curl of the basis function on the template parallelepiped [-1,1]^3
+// Point coordinates - local
 //------------------------------------------------------------------------
 void T_Brick::Rotx_of_basis_func_on_reference_vec_par(long n, double x, double *out)
 {
@@ -1499,8 +1523,8 @@ void T_Brick::Rotx_of_basis_func_on_reference_vec_par(long n, double x, double *
 	}
 }
 //------------------------------------------------------------------------
-// только y-компонента ротора базисных ф-й на шаблонном параллелепипеде [-1,1]^3
-// Координаты точки - локальные
+// only the y-component of the curl of the basis function on the template parallelepiped [-1,1]^3
+// Point coordinates - local                                                                     
 //------------------------------------------------------------------------
 void T_Brick::Roty_of_basis_func_on_reference_vec_par(long n, double y, double *out)
 {
@@ -1544,8 +1568,8 @@ void T_Brick::Roty_of_basis_func_on_reference_vec_par(long n, double y, double *
 	}
 }
 //------------------------------------------------------------------------
-// только z-компонента ротора базисных ф-й на шаблонном параллелепипеде [-1,1]^3
-// Координаты точки - локальные
+// only the y-component of the curl of the basis function on the template parallelepiped [-1,1]^3
+// Point coordinates - local                                                                     
 //------------------------------------------------------------------------
 void T_Brick::Rotz_of_basis_func_on_reference_vec_par(long n, double z, double *out)
 {
@@ -1589,9 +1613,9 @@ void T_Brick::Rotz_of_basis_func_on_reference_vec_par(long n, double z, double *
 	}
 }
 //-----------------------------------------------------------------------------
-//----- преобразование шестигранника из шаблонного в произвольный
-//----- (точки шестигранника преобразуются по этому правилу)
-//----- т.е. на входе - локальные координаты точки, на выходе - глобальные
+//----- converting a hexahedron from template to arbitrary
+// (hexahedron points are converted according to this rule)
+// those at the input - local coordinates of the point, at the output - global 
 //-----------------------------------------------------------------------------
 void T_Brick::Mapping(double *in, double *out)
 {
@@ -1609,27 +1633,28 @@ void T_Brick::Mapping(double *in, double *out)
 	}
 }
 //-----------------------------------------------------------------------------
-// вычисляет матрицу Якоби в случае параллелепипеда
+// calculates the Jacobian matrix in the case of a parallelepiped
 //-----------------------------------------------------------------------------
 void T_Brick::Calc_J_in_parallelepiped()
 {
-	// на параллелепипеде эл-ты матрицы Якоби постоянны,
-	// поэтому всё равно в какой точке вычислять
+	// on the parallelepiped, the elements of the Jacobian matrix are constant,
+	// so it doesn't matter at which point to calculate
+	
 
-	// эл-ты матрицы Якоби
+	// elements of the Jacobian matrix
 	J[0][0] = hx*0.5;
 	J[1][1] = hy*0.5;
 	J[2][2] = hz*0.5;
 
 	J[0][1] = J[0][2] = J[1][0] = J[1][2] = J[2][0] = J[2][1] = 0.0;
 
-	// вычисляем Якобиан (определитель)
+	// calculate Jacobian (determinant)
 	det_J = hx*hy*hz/8.0;
 
-	// модуль Якобиана
+	// Jacobian modulus
 	det_J_abs = fabs(det_J);
 
-	// матрица, обратная к матрице Якоби (и транспонированная)
+	// matrix inverse to Jacobi matrix (and transposed)
 	J_1_T[0][0] = J_1[0][0] = 2.0/hx;
 	J_1_T[1][1] = J_1[1][1] = 2.0/hy;
 	J_1_T[2][2] = J_1[2][2] = 2.0/hz;
@@ -1637,13 +1662,13 @@ void T_Brick::Calc_J_in_parallelepiped()
 		J_1[0][1] = J_1[0][2] = J_1[1][0] = J_1[1][2] = J_1[2][0] = J_1[2][1] =	0.0;
 }
 //-----------------------------------------------------------------------------
-// выдать z-компоненту ротора в точках Гаусса в верхней грани шестигранника
-// сразу для трёх решений (для 3-слойной схемы по времени)
+// give the z-component of the curl at Gauss points in the upper face of the hexahedron 
+// for three solutions at once (for a 3-layer scheme in time)
 //-----------------------------------------------------------------------------
 void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 							   double *out1, double *out2, double *out3)
 {
-	if(type_of_hex > 30) // векторный шестигранник
+	if(type_of_hex > 30) // vecot hexahedron
 	{
 		double in[3];
 		double temp2[3];
@@ -1657,7 +1682,7 @@ void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 			in[0] = gauss_3_t_2d[npoint][0];
 			in[1] = gauss_3_t_2d[npoint][1];
 
-			Calc_J(in[0], in[1], in[2]); // матрицу Якоби вычисляем один раз для каждой точки Гаусса
+			Calc_J(in[0], in[1], in[2]); // Jacobi matrix is calculated once for each Gaussian point
 
 			out1[npoint] = out2[npoint] = out3[npoint] = 0.0;
 
@@ -1665,8 +1690,7 @@ void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 			{
 				Rot_of_basis_func_on_reference_vec_par(i, in, temp2);
 
-				// так как требуется только z-компонента ротора,
-				// умножается только последняя строчка матрицы Якоби
+				// since only the z-component of the curl is required, only the last row of the Jacobian matrix is multiplied 
 				t = (J[2][0]*temp2[0] + J[2][1]*temp2[1] + J[2][2]*temp2[2])/det_J_abs;
 				out1[npoint] += t*ves1[i];
 				out2[npoint] += t*ves2[i];
@@ -1674,12 +1698,11 @@ void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 			}
 		}
 	}
-	else // параллелепипед 
+	else //  parallelepiped  
 	{
 		double t = 2.0/(hx*hy);
 
-		// rot_z на верхней грани=const и определяется 4-мя базисными
-		// функциями, ассоциированными с рёбрами, лежащими в этой грани
+		// rot_z on the upper face = const and is determined by 4 basis functions associated with the edges lying in this face
 		out1[0]=out1[1]=out1[2]=out1[3]=out1[4]=out1[5]=
 			out1[6]=out1[7]=out1[8] =
 				t*ves1[2] - t*ves1[3] - t*ves1[5] + t*ves1[7];
@@ -1694,15 +1717,15 @@ void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 	}
 }
 //-----------------------------------------------------------------------------
-// выдать компоненты ротора в точках Гаусса в верхней грани шестигранника
-// сразу для трёх решений (для 3-слойной схемы по времени)
+// output the curl components at the Gauss points in the upper face of the hexahedron for three solutions at once (for a 3-layer scheme in time)
+// 
 //-----------------------------------------------------------------------------
 void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 							  double *out1, double *out2, double *out3,
 							  double *outx1, double *outx2, double *outx3,
 							  double *outy1, double *outy2, double *outy3)
 {
-	if(type_of_hex > 30) // векторный шестигранник
+	if(type_of_hex > 30) // vecot hexahedron
 	{
 		double in[3];
 		double temp2[3];
@@ -1716,7 +1739,7 @@ void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 			in[0] = gauss_3_t_2d[npoint][0];
 			in[1] = gauss_3_t_2d[npoint][1];
 
-			Calc_J(in[0], in[1], in[2]); // матрицу Якоби вычисляем один раз для каждой точки Гаусса
+			Calc_J(in[0], in[1], in[2]); // Jacobi matrix is calculated once for each Gaussian point
 
 			out1[npoint] = out2[npoint] = out3[npoint] = 0.0;
 			outx1[npoint] = outx2[npoint] = outx3[npoint] = 0.0;
@@ -1725,20 +1748,19 @@ void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 			for (i=0; i<12; i++)
 			{
 				Rot_of_basis_func_on_reference_vec_par(i, in, temp2);
-
-				// так как требуется только z-компонента ротора,
-				// умножается только последняя строчка матрицы Якоби
+			
+				// since only the z-component of the curl is required, only the last row of the Jacobian matrix is multiplied 
 				t = (J[2][0]*temp2[0] + J[2][1]*temp2[1] + J[2][2]*temp2[2])/det_J_abs;
 				out1[npoint] += t*ves1[i];
 				out2[npoint] += t*ves2[i];
 				out3[npoint] += t*ves3[i];
 				
-				// для rot_x
+				// for rot_x
 				t = (J[0][0]*temp2[0] + J[0][1]*temp2[1] + J[0][2]*temp2[2])/det_J_abs;
 				outx1[npoint] += t*ves1[i];
 				outx2[npoint] += t*ves2[i];
 				outx3[npoint] += t*ves3[i];
-				// для rot_y
+				// for rot_y
 				t = (J[1][0]*temp2[0] + J[1][1]*temp2[1] + J[1][2]*temp2[2])/det_J_abs;
 				outy1[npoint] += t*ves1[i];
 				outy2[npoint] += t*ves2[i];
@@ -1746,14 +1768,14 @@ void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 			}
 		}
 	}
-	else // параллелепипед 
+	else // parallelepiped 
 	{
 		int i;
 
 		double t = 2.0/(hx*hy);
 
-		// rot_z на верхней грани=const и определяется 4-мя базисными
-		// функциями, ассоциированными с рёбрами, лежащими в этой грани
+		// rot_z on the upper face = const and is determined by 4 basis functions 
+		// associated with the edges lying in this face 
 		out1[0]=out1[1]=out1[2]=out1[3]=out1[4]=out1[5]=
 			out1[6]=out1[7]=out1[8] =
 				t*ves1[2] - t*ves1[3] - t*ves1[5] + t*ves1[7];
@@ -1767,14 +1789,14 @@ void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 			t*ves3[2] - t*ves3[3] - t*ves3[5] + t*ves3[7];
 
 		
-		// для rot_x
+		// for rot_x
 		for (i=0; i<9; i++)
 		{
 			RotXOnPar(gauss_3_t_2d[i][0], ves1, &outx1[i], true);
 			RotXOnPar(gauss_3_t_2d[i][0], ves2, &outx2[i], true);
 			RotXOnPar(gauss_3_t_2d[i][0], ves3, &outx3[i], true);
 		}
-		// для rot_y
+		// for rot_y
 		for (i=0; i<9; i++)
 		{
 			RotYOnPar(gauss_3_t_2d[i][1], ves1, &outy1[i], true);
@@ -1784,9 +1806,9 @@ void T_Brick::Get_rot_on_face(double *ves1, double *ves2, double *ves3,
 	}
 }
 //------------------------------------------------------------------------
-// z - компонента родля 3-слойной схемы в произвольной точке
-// внутри параллелелепипеда
-// z-координата - глобальная
+// z - rotor component for a 3-layer scheme at an arbitrary point
+// inside the parallelepiped
+// z-coordinate - global 
 //------------------------------------------------------------------------
 void T_Brick::RotZOnPar3(double z,
 						double *ves1, double *ves2, double *ves3,
@@ -1799,16 +1821,15 @@ void T_Brick::RotZOnPar3(double z,
 	
 	*out1 = *out2 = *out3 = 0.0;
 
-	zz = Zeta(z); // Rot_z зависит только от z
+	zz = Zeta(z); // Rot_z depends only on z
 	t2 = 4.0/(hx*hy);
 	
-	// ненулевая компонента ротора только у первых восьми баз. функций
+	// nonzero curl component only for the first eight basis functions
 	for (i=0; i<8; i++)
 	{
 		Rotz_of_basis_func_on_reference_vec_par(i, zz, &temp);
 
-		// так как требуется только z-компонента ротора,
-		// умножается только последняя строчка матрицы Якоби
+		// since only the z-component of the curl is required, only the last row of the Jacobian matrix is multiplied
 		t = temp*t2;
 		*out1 += t*ves1[i];
 		*out2 += t*ves2[i];
@@ -1882,20 +1903,19 @@ void T_Brick::RotZOnPar(double z, double *ves, double *out)
 	zz = Zeta(z);
 	t2 = 4.0/(hx*hy);
 
-	// ненулевая компонента ротора только у первых восьми баз. функций
+	// nonzero curl component only for the first eight basis functions 
 	for (i=0; i<8; i++)
 	{
 		Rotz_of_basis_func_on_reference_vec_par(i, zz, &temp);
 
-		// так как требуется только z-компонента ротора,
-		// умножается только последняя строчка матрицы Якоби
+		// since only the z-component of the curl is required, only the last row of the Jacobian matrix is multiplied     
+		
 		t = temp*t2;
 		*out += t*ves[i];
 	}
 }
 //------------------------------------------------------------------------
-// выдать x,y,z-компоненту поля в точках Гаусса в верхней грани шестигранника
-// сразу для трёх решений (для 3-слойной схемы по времени)
+// give the x,y,z-component of the field at the Gauss points in the upper face of the hexahedron for three solutions at once (for a 3-layer time scheme)
 //------------------------------------------------------------------------
 void T_Brick::Get_x_y_on_face(double *ves1, double *ves2, double *ves3,
 							  double *outx1, double *outx2, double *outx3,
@@ -1909,19 +1929,19 @@ void T_Brick::Get_x_y_on_face(double *ves1, double *ves2, double *ves3,
 
 	for(npoint=0; npoint<9; npoint++)
 	{
-		// вычисляем поле на шаблонном эл-те
+		// calculate the field on the template element
 
-		// чтобы выдать x-компоненту в верхней грани нужны рёбра 2 и 3 (с нуля)
+		// to give the x-component in the upper face, edges 2 and 3 are needed (from 0)
 		tempx[0] = gauss_3_phi_vec_face[npoint][2][0]*ves1[2] + gauss_3_phi_vec_face[npoint][3][0]*ves1[3];
 		tempx[1] = gauss_3_phi_vec_face[npoint][2][0]*ves2[2] + gauss_3_phi_vec_face[npoint][3][0]*ves2[3];
 		tempx[2] = gauss_3_phi_vec_face[npoint][2][0]*ves3[2] + gauss_3_phi_vec_face[npoint][3][0]*ves3[3];
 
-		// чтобы выдать y-компоненту в верхней грани нужны рёбра 5 и 7 (с нуля)
+		// to give the y-component in the upper face, edges 5 and 7 are needed (from 0)
 		tempy[0] = gauss_3_phi_vec_face[npoint][5][1]*ves1[5] + gauss_3_phi_vec_face[npoint][7][1]*ves1[7];
 		tempy[1] = gauss_3_phi_vec_face[npoint][5][1]*ves2[5] + gauss_3_phi_vec_face[npoint][7][1]*ves2[7];
 		tempy[2] = gauss_3_phi_vec_face[npoint][5][1]*ves3[5] + gauss_3_phi_vec_face[npoint][7][1]*ves3[7];
 
-		// чтобы выдать z-компоненту в верхней грани нужны рёбра 8,9,10,11 (с нуля)
+		// to give the z-component in the upper face, edges 8,9,10,11 are needed (from 0)
 		tempz[0] = gauss_3_phi_vec_face[npoint][8][2]*ves1[8] + gauss_3_phi_vec_face[npoint][9][2]*ves1[9]
 				+ gauss_3_phi_vec_face[npoint][10][2]*ves1[10] + gauss_3_phi_vec_face[npoint][11][2]*ves1[11];
 
@@ -1931,29 +1951,29 @@ void T_Brick::Get_x_y_on_face(double *ves1, double *ves2, double *ves3,
 		tempz[2] = gauss_3_phi_vec_face[npoint][8][2]*ves3[8] + gauss_3_phi_vec_face[npoint][9][2]*ves3[9]
 				+ gauss_3_phi_vec_face[npoint][10][2]*ves3[10] + gauss_3_phi_vec_face[npoint][11][2]*ves3[11];
 
-		// домножаем на Якобиан
+		// multiply by Jacobian
 
-		if(type_of_hex > 30) // векторный шестигранник
+		if(type_of_hex > 30) // vector hexahedron
 		{
-			// матрицу Якоби вычисляем один раз для каждой точки Гаусса
+			// Jacobi matrix is calculated once for each Gaussian point
 			Calc_J(gauss_3_t_2d[npoint][0], gauss_3_t_2d[npoint][1], 1.0); 
 
-			// x (умножаем 1-ю строчку матрицы Якоби)
+			// x (multiply 1st row of Jacobian matrix)
 			outx1[npoint] = (J_1_T[0][0]*tempx[0] + J_1_T[0][1]*tempy[0] + J_1_T[0][2]*tempz[0]);
 			outx2[npoint] = (J_1_T[0][0]*tempx[1] + J_1_T[0][1]*tempy[1] + J_1_T[0][2]*tempz[1]);
 			outx3[npoint] = (J_1_T[0][0]*tempx[2] + J_1_T[0][1]*tempy[2] + J_1_T[0][2]*tempz[2]);
 
-			// y (умножаем 2-ю строчку матрицы Якоби)
+			// y (multiply the 2nd row of the Jacobian matrix)
 			outy1[npoint] = (J_1_T[1][0]*tempx[0] + J_1_T[1][1]*tempy[0] + J_1_T[1][2]*tempz[0]);
 			outy2[npoint] = (J_1_T[1][0]*tempx[1] + J_1_T[1][1]*tempy[1] + J_1_T[1][2]*tempz[1]);
 			outy3[npoint] = (J_1_T[1][0]*tempx[2] + J_1_T[1][1]*tempy[2] + J_1_T[1][2]*tempz[2]);
 
-			// y (умножаем 3-ю строчку матрицы Якоби)
+			// y (multiply 3rd row of Jacobian matrix)
 			outz1[npoint] = (J_1_T[2][0]*tempx[0] + J_1_T[2][1]*tempy[0] + J_1_T[2][2]*tempz[0]);
 			outz2[npoint] = (J_1_T[2][0]*tempx[1] + J_1_T[2][1]*tempy[1] + J_1_T[2][2]*tempz[1]);
 			outz3[npoint] = (J_1_T[2][0]*tempx[2] + J_1_T[2][1]*tempy[2] + J_1_T[2][2]*tempz[2]);
 		}
-		else // векторный параллелепипед
+		else // vector parallelepiped
 		{
 			outx1[npoint] = tempx[0]*2.0/hx;
 			outx2[npoint] = tempx[1]*2.0/hx;
@@ -1970,8 +1990,8 @@ void T_Brick::Get_x_y_on_face(double *ves1, double *ves2, double *ves3,
 	}
 }
 //--------------------------------------------------------------------------------
-//--- Замена переменных для базисных функций, заданных на [-1, 1]
-//--- (из глобальных координат --> локальные)
+//--- Change of variables for basis functions defined on [-1, 1]
+//   (from global coordinates --> local) 
 //--------------------------------------------------------------------------------
 void T_Brick::Transformation_of_variables(double *in, double *out)
 {
@@ -2106,8 +2126,9 @@ double T_Brick::DzOfScalarFieldOnPar(double x, double y, double z, double *ves)
 	return res;
 }
 //------------------------------------------------------------------------
-// выдать значение векторного поля на параллелепипеде
-// (координаты точки - глобальные)
+// print the value of a vector field on a parallelepiped
+// (point coordinates - global)
+// 
 //------------------------------------------------------------------------
 void T_Brick::VectorFieldOnPar(double x, double y, double z, double *ves,
 								 double *x_out, double *y_out, double *z_out)
@@ -2125,7 +2146,7 @@ void T_Brick::VectorFieldOnPar(double x, double y, double z, double *ves,
 	*z_out = out[2];
 }
 //------------------------------------------------------------------------
-// выдать x-компоненту поля с параллелепипеда сразу для трёх значений весов
+// return the x-component of the field from the parallelepiped  for three weight values at once
 //------------------------------------------------------------------------
 void T_Brick::VectorFieldXOnPar3(double y, double z, double *ves_j2, double *ves_j1, double *ves_j,
 						double *out_j2, double *out_j1, double *out_j)
@@ -2157,7 +2178,7 @@ void T_Brick::VectorFieldXOnPar3(double y, double z, double *ves_j2, double *ves
 	*out_j  *= 2.0/hx;
 }
 //------------------------------------------------------------------------
-// выдать y-компоненту поля с параллелепипеда сразу для трёх значений весов
+// return the y-component of the field from the parallelepiped  for three weight values at once
 //------------------------------------------------------------------------
 void T_Brick::VectorFieldYOnPar3(double x, double z, double *ves_j2, double *ves_j1, double *ves_j,
 								 double *out_j2, double *out_j1, double *out_j)
@@ -2227,8 +2248,7 @@ void T_Brick::Calc_block_local_matrix_and_vector()
 }
 
 //-----------------------------------------------------------------------------
-//----  вычислить локальный вектор правой части с персчётом 1-мерного поля 
-//----   в 3-мерную сетку для МТЗ
+// calculate the local vector of the right-hand side with the conversion of the 1-dimensional field into a 3-dimensional grid for MT 
 //-----------------------------------------------------------------------------
 void T_Brick::Calc_local_vector_for_MT()
 {
@@ -2244,7 +2264,7 @@ void T_Brick::Calc_local_vector_for_MT()
 	Mult_Plot((double*)b, acos0, g_im_b, 12);
 }
 //------------------------------------------------------------------------
-// вычислить локальный вектор правой части с учётом, что ток=const на элементе
+// calculate the local vector of the right-hand side, taking into account that the current = const on the element
 //------------------------------------------------------------------------
 void T_Brick::LocalVectHarmConst()
 {
@@ -2253,7 +2273,7 @@ void T_Brick::LocalVectHarmConst()
 	long i, k;
 	double gauss_3_mult;
 	
-	// обнуляем
+	// set 0
 	for(i=0; i<12; i++)
 	{
 		g_im[i] = g_re[i] = 0.0;
@@ -2261,12 +2281,12 @@ void T_Brick::LocalVectHarmConst()
 	}
 
 	{
-		for(k=0; k<27; k++) // по числу точек интегрирования
+		for(k=0; k<27; k++) // by the number of integration points
 		{
-			Calc_J(k); // вычисляем матрицу Якоби
+			Calc_J(k); // calculate the Jacobian matrix
 			gauss_3_mult = gauss_3_A_all[k]*det_J_abs; // A_i*A_j*A_k*|J|
 
-			for(i=0; i<12; i++) // базисные ф-ции преобразуются по правилу...
+			for(i=0; i<12; i++) 
 				Mult_Plot((double*)J_1_T,
 				(double*)gauss_3_phi_hex_vec[k][i], (double*)phi_all[i], 3);			
 
@@ -2279,13 +2299,13 @@ void T_Brick::LocalVectHarmConst()
 	} 
 }
 //------------------------------------------------------------------------
-// вычислить нормальное поле в вершинах (для гармонических задач)
+// calculate the normal field at the vertices (for harmonic problems)
 //------------------------------------------------------------------------
 void T_Brick::Calc_asin_acos_at_nodes()
 {
 	int i, j;
-	double coord[3]; // координаты текущей вершины
-	double u_sin[3], u_cos[3]; // значение нормального поля в вершине
+	double coord[3]; // current vertex coordinates
+	double u_sin[3], u_cos[3]; // the value of the normal field at the vertex
 	double val;
 
 	for (i=0; i<8; i++)
@@ -2305,7 +2325,7 @@ void T_Brick::Calc_asin_acos_at_nodes()
 		{
 			if (tasktype==2)
 			{
-				// значения En есть только в центрах ребер
+				// En values are only in the centers of edges
 				u_sin[0]=u_sin[1]=u_sin[2]=u_cos[0]=u_cos[1]=u_cos[2]=0;
 			}
 			else
@@ -2329,7 +2349,7 @@ void T_Brick::Calc_asin_acos_at_nodes()
 		}
 	}
 
-	// суммируем в центр и делим на 8
+	// sum to the center and divide by 8
 
 	for (j=0; j<3; j++)
 		asin0c[j] = acos0c[j] = 0.0;
@@ -2353,8 +2373,7 @@ void T_Brick::Calc_asin_acos_at_nodes()
 	{
 		for (j=0; j<3; j++)
 			asin0c[j] = acos0c[j] = 0.0;
-		// для линии
-		// суммируем с ребер в центр и делим на 12
+		// sum to the center and divide by 12
 		for (i=0; i<12; i++)
 		{
 			u_sin[0]=u_sin[1]=u_sin[2]=u_cos[0]=u_cos[1]=u_cos[2]=0;
@@ -2385,7 +2404,7 @@ void T_Brick::Calc_asin_acos_at_nodes()
 }
 
 //-----------------------------------------------------------------------------
-//-----    вычислить нормальное поле в серединах рёбер (для гармонических задач)
+// calculate the normal field at the midpoints of the edges (for harmonic problems)
 //-----------------------------------------------------------------------------
 
 void normalize(double *v)
@@ -2400,8 +2419,8 @@ void normalize(double *v)
 void T_Brick::Calc_asin_acos_at_middle_of_edges()
 {
 	long i, j;
-	double u_sin[3], u_cos[3]; // значение нормального поля в середине ребра
-	double x_mid[3]; // координаты точки середины ребра
+	double u_sin[3], u_cos[3]; // the value of the normal field in the middle of the edge
+	double x_mid[3]; // coordinates of the midpoint of the edge
 	double v[3];
 
 	for (i=0; i<12; i++)
@@ -2432,7 +2451,7 @@ void T_Brick::Calc_asin_acos_at_middle_of_edges()
 			}
 			else
 			{
-				// 	для реальной задачи МТЗ
+				// 	for a real MT problem
   				u_sin[0] = Spline(x_mid[2], n_1d, z_1d, sin_1d)*alpha;
   				u_sin[1] = Spline(x_mid[2], n_1d, z_1d, sin_1d)*(1.0 - alpha);
   				u_sin[2] = 0.0;

@@ -1,7 +1,30 @@
+/**                                                                                                       
+ * GENERAL REMARKS                                                                                        
+ *                                                                                                        
+ *  This code is freely available under the following conditions:                                         
+ *                                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                                           
+ *  2) No changes and modifications to the code without prior permission of the developer.                
+ *  3) No forwarding the code to a third party without prior permission of the developer.                 
+ *                                                                                                        
+ *  			MTCalc_with_DFP_COCR                                                              
+ *  This file contains some basic routines for construction of a matrix portrait of a finite element SLAE 
+ * (nodal FEM for solving 2D and 3D problems)                                                             
+ *                                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                                     
+ *  Novosibirsk State Technical University,                                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                     
+ *  p_domnikov@mail.ru                                                                                    
+ *  Version 1.3 April 5, 2021                                                                             
+*/                                                                                                        
+
+
 #include "stdafx.h"
 #include "Portret.h"
 //--------------------------
-void Portret::Add_In_Ordered_List(list *s, long x) // вставка эл-та в упорядоченный список
+// inserting an element into an ordered list 
+//--------------------------  
+void Portret::Add_In_Ordered_List(list *s, long x) 
 {
 	list *head, *cur, *prev, *list_new;
 
@@ -17,7 +40,7 @@ void Portret::Add_In_Ordered_List(list *s, long x) // вставка эл-та в упорядочен
 		cur = cur->next;
 	}
 
-	if(prev == NULL) // вставить в начало
+	if(prev == NULL) // insert at the beginning
 	{
 	  	list_new = new list;
 		if(list_new == 0)
@@ -33,7 +56,7 @@ void Portret::Add_In_Ordered_List(list *s, long x) // вставка эл-та в упорядочен
 		list_new->next = head;
 		s->next = list_new;
 	}
-	else if(prev->number!=x)// вставить после предыдущего
+	else if(prev->number!=x)	// insert after previous
 	{
 	  	list_new = new list;
 		if(list_new == 0)
@@ -51,8 +74,10 @@ void Portret::Add_In_Ordered_List(list *s, long x) // вставка эл-та в упорядочен
 	}
 }
 //--------------------------------------------
+// matrix portrait for 2d problem 
+//--------------------------------------------
 Portret::Portret(long (*nvtr)[4], long n_of_elements, long n_of_nodes, long n_c, long *ig_t, long *jg_t)
-{  // for 2d problem
+{  
 	this->nvtr4 = nvtr;
 	this->n_of_elements = n_of_elements;
 	this->is_mem_ig_jg_allocated = false;
@@ -120,6 +145,8 @@ Portret::~Portret()
 	}
 }
 //----------------------------------------
+// matrix portrait for 3D problem               
+//--------------------------------------------  
 void Portret::Gen_T_Portrait()
 {
 	Portret P;
@@ -131,7 +158,7 @@ void Portret::Gen_T_Portrait()
 
 	printf("T_Portrait... ");
 
-	s = new list[n_c]; // выделяем память под структуру
+	s = new list[n_c]; // allocate memory for the structure
 	if(s == 0)
 	{
 		char var[] = {"s"};
@@ -143,49 +170,49 @@ void Portret::Gen_T_Portrait()
 	for(i=0; i<n_c; i++)
 		s[i].next = NULL;
 
-	for(i=0; i<this->n_of_elements; i++) // заполняем структуру
+	for(i=0; i<this->n_of_elements; i++) // fill the structure
 	{
-		for(j=0; j<8; j++) // для каждого эл-та в массив local помещаем глобальные номера
-		{                   // функций <n_c, участвующие в построении базисных ф-ций на этом эл-те
+		for(j=0; j<8; j++) // for each element in the local array we put global numbers
+		{                   // functions <n_c, involved in the construction of basic functions on this element
 			e = nvtr[i][j];
-			if(e < n_c) // узел обычный - просто заносим его
+			if(e < n_c) // normal node - just bring it in
 			{
 				local.push_back(e);
 			}
-			else // узел терминальный - обращаемся к матрице T, чтобы определить какие нетерминальные узлы дают вклад
+			else // terminal node - refer to the matrix T to determine which non-terminal nodes contribute
 			{ 
 				for(k=ig_t[e]; k<=ig_t[e+1]-1; k++)
 					local.push_back(jg_t[k]);					
 			}
 		}// j
 
-		// сортируем и удаляем повторяющиеся эл-ты // обязательно ли это делать - не знаю
+		// sort and remove duplicate elements
 		std::sort(local.begin(),local.end());
 		std::unique_copy(local.begin(), local.end(), back_inserter(loc));
 
-		for(j=0; j<(long)loc.size(); j++) // собственно заносим в структуру
+		for(j=0; j<(long)loc.size(); j++) // put into the structure
 		for(k=0; k<(long)loc.size(); k++)
 		{
 			tmp1 = loc[k];
 			tmp2 = loc[j];
-			if(tmp1 < tmp2) //храним только нижний треугольник
+			if(tmp1 < tmp2) //keep only the bottom triangle
 			{
 				P.Add_In_Ordered_List(&s[tmp2], tmp1);					
 			}
 		}
 
-		tmp1 = (long)local.size(); // удаляем
+		tmp1 = (long)local.size(); // delete
 		for(j=0; j<tmp1; j++) local.pop_back();
 		tmp1 = (long)loc.size();
 		for(j=0; j<tmp1; j++) loc.pop_back();
 	}// i
 
-	// подсчитываем размер структуры
+	// calculate the size of the structure
 	size_jg = 0;
 	for(i=0; i<n_c; i++)
 		size_jg += P.Size_Of_List(s[i].next);
 
-	// выделяем память под ig, jg
+	// allocate memory for ig, jg
 
 	ig = new long[n_c + 1];
 	if(ig == 0)
@@ -207,7 +234,7 @@ void Portret::Gen_T_Portrait()
 
 	is_mem_ig_jg_allocated = true;
 
-	// заполняем ig, jg и удаляем структуру
+	// fill in ig, jg and remove structure
 	i = 0;
 	ig[0] = 0;
 	for(k=0;k<this->n_c;k++)
@@ -236,41 +263,41 @@ void Portret::Gen_T_Portrait2()
 	std::vector<long> local, loc;
 	In_Out R;
 
-	 // выделяем память под структуру
+	 // allocate memory for the structure
 	if ((s = new list[n_c]) == 0) Memory_allocation_error("s", "Gen_T_Portrait2");
 
 	for(i=0; i<n_c; i++)
 		s[i].next = NULL;
 
-	for(i=0; i<n_of_elements; i++) // заполняем структуру
+	for(i=0; i<n_of_elements; i++) // fill the structure
 	{
-		for(j=0; j<8; j++) // для каждого эл-та в массив local помещаем глобальные номера
-		{                   // функций <n_c, участвующие в построении базисных ф-ций на этом эл-те
+		for(j=0; j<8; j++) //  for each element in the local array we put global numbers
+		{                   // functions <n_c, involved in the construction of basic functions on this element
 			e = nver[i][j];
 
-			if(e < n_c) // узел обычный - просто заносим его
+			if(e < n_c) // normal node - just bring it in
 			{
 				local.push_back(e);
 			}
-			else // узел терминальный - обращаемся к матрице T, чтобы определить какие нетерминальные узлы дают вклад
+			else // terminal node - refer to the matrix T to determine which non-terminal nodes contribute
 			{ 
 				for(k=ig_t[e]; k<=ig_t[e+1]-1; k++)
 					local.push_back(jg_t[k]);					
 			}
 		}// j
 
-		// удаляем повторяющиеся эл-ты // обязательно ли это делать - не знаю
+		// remove duplicate elements
 		std::sort(local.begin(),local.end());
 		std::unique_copy(local.begin(), local.end(), back_inserter(loc));
 
-		for(j=0; j<(long)loc.size(); j++) // собственно заносим в структуру
+		for(j=0; j<(long)loc.size(); j++) // put into the structure
 		{
 			for(k=0; k<(long)loc.size(); k++)
 			{
 				tmp1 = loc[k];
 				tmp2 = loc[j];
 
-				if(tmp1 < tmp2) //храним только нижний треугольник
+				if(tmp1 < tmp2) //keep only the bottom triangle
 					P.Add_In_Ordered_List(&s[tmp2], tmp1);					
 			}
 		}
@@ -279,18 +306,18 @@ void Portret::Gen_T_Portrait2()
 		local.clear();
 	}// i
 
-	// подсчитываем размер структуры
+	// calculate the size of the structure
 	size_jg = 0;
 	for(i=0; i<n_c; i++)
 		size_jg += P.Size_Of_List(s[i].next);
 
-	// выделяем память под ig, jg
+	// allocate memory for ig, jg
 	if ((ig = new long[n_c + 1]) == 0) Memory_allocation_error("ig", "Gen_T_Portrait2");
 	if ((jg = new long[size_jg]) == 0) Memory_allocation_error("jg", "Gen_T_Portrait2");;
 
 	is_mem_ig_jg_allocated = true;
 
-	// заполняем ig, jg и удаляем структуру
+	// fill in ig, jg and remove structure
 	i = 0;
 	ig[0] = 0;
 	for(k=0; k<n_c; k++)
@@ -319,7 +346,7 @@ void Portret::Gen_Portret_2d_Linear()
 
 	printf("Portret_2d_Linear... ");
 
-	s = new list[n]; // выделяем память под структуру
+	s = new list[n]; // allocate memory for the structure
 	if(s == 0)
 	{
 		char var[] = {"s"};
@@ -331,23 +358,23 @@ void Portret::Gen_Portret_2d_Linear()
 	for(i=0; i<n; i++)
 		s[i].next = NULL;
 
-	// заполняем структуру
+	// fill the structure
 	for(i=0; i<this->n_of_elements; i++)
 		for(j=0; j<4; j++)
 			for(k=0; k<4; k++)
 			{
 				tmp1 = nvtr4[i][k];
 				tmp2 = nvtr4[i][j];
-				if(tmp1 < tmp2) //храним только нижний треугольник
+				if(tmp1 < tmp2) //keep only the bottom triangle
 					this->Add_In_Ordered_List(&s[tmp2], tmp1);					
 			}
 
-		// подсчитываем размер структуры
+		// calculate the size of the structure
 		this->size_jg = 0;
 		for(i=0; i<this->n; i++)
 			this->size_jg += this->Size_Of_List(s[i].next);
 
-		// выделяем память под ig, jg
+		// allocate memory for ig, jg
 		ig = new long[n+1];
 		if(ig == 0)
 		{
@@ -368,7 +395,7 @@ void Portret::Gen_Portret_2d_Linear()
 
 		is_mem_ig_jg_allocated = true;
 
-		// заполняем ig, jg и удаляем структуру
+		// fill in ig, jg and remove structure
 		i = 0;
 		ig[0] = 0;
 		for(k=0;k<this->n;k++)
@@ -427,34 +454,34 @@ void Portret::Gen_Portret_2d_rect_T()
 	for(i=0; i<n_c*2; i++)
 		s[i].next = NULL;
 
-	for(i=0; i<this->n_of_elements; i++) // заполняем структуру
+	for(i=0; i<this->n_of_elements; i++) // fill the structure 
 	{
-		for(j=0; j<4; j++) // для каждого эл-та в массив local помещаем глобальные номера
-		{                   // узлов <n_c, участвующие в построении базисных ф-ций на этом эл-те
+		for(j=0; j<4; j++) //  for each element in the local array we put global numbers 
+		{                   // functions <n_c, involved in the construction of basic functions on this element 
 			e = nvtr4[i][j];
-			if(e < n_c) // узел обычный - просто заносим его
+			if(e < n_c) // normal node - just bring it in   
 			{
 				local.push_back(e);
 			}
-			else // узел терминальный - обращаемся к матрице T, чтобы определить какие нетерминальные узлы дают вклад
+			else // terminal node - refer to the matrix T to determine which non-terminal nodes contribute  
 			{ 
 				for(k=ig_t[e]; k<=ig_t[e+1]-1; k++)
 					local.push_back(jg_t[k]);					
 			}
 		}// j
 
-		// сортируем и удаляем повторяющиеся эл-ты // обязательно ли это делать - не знаю
+		// remove duplicate elements  
 		std::sort(local.begin(),local.end());
 		std::unique_copy(local.begin(), local.end(), back_inserter(loc));
 
-		for(j=0; j<(long)loc.size(); j++) // собственно заносим в структуру
+		for(j=0; j<(long)loc.size(); j++) // put into the structure 
 			for(k=0; k<(long)loc.size(); k++)
 				for(j1=0; j1<2; j1++)
 					for(k1=0; k1<2; k1++)
 					{
 						tmp1 = loc[k]*2 + k1;
 						tmp2 = loc[j]*2 + j1;
-						if(tmp1 < tmp2) //храним только нижний треугольник
+						if(tmp1 < tmp2) //keep only the bottom triangle    
 						{
 							Add_In_Ordered_List(&s[tmp2], tmp1);					
 						}
@@ -466,12 +493,12 @@ void Portret::Gen_Portret_2d_rect_T()
 					for(j=0; j<tmp1; j++) loc.pop_back();
 	}// i
 
-	// подсчитываем размер структуры
+	// calculate the size of the structure   
 	size_jg = 0;
 	for(i=0; i<n_c*2; i++)
 		size_jg += Size_Of_List(s[i].next);
 
-	// выделяем память под ig, jg
+	// allocate memory for ig, jg
 
 	ig = new long[n_c*2 + 1];
 	if(ig == 0)
@@ -493,7 +520,7 @@ void Portret::Gen_Portret_2d_rect_T()
 
 	is_mem_ig_jg_allocated = true;
 
-	// заполняем ig, jg и удаляем структуру
+	// fill in ig, jg and remove structure
 	i = 0;
 	ig[0] = 0;
 	for(k=0;k<n_c*2;k++)

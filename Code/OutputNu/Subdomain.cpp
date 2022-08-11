@@ -1,56 +1,100 @@
+/**
+ * GENERAL REMARKS
+ *
+ *  This code is freely available under the following conditions:
+ *
+ *  1) The code is to be used only for non-commercial purposes.
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer.
+ *
+ *              MTCalc_with_DFP_COCR
+ *  Functions for building subdomains for smoothing EM field
+ *
+ *  Written by Prof. Marina G. Persova  and Ph.D. Petr A. Domnikov 
+ *  Novosibirsk State Technical University,
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia
+ *  mpersova@mail.ru
+ *  Version 1.5 December 17, 2020
+*/
+
 #include "stdafx.h"
 #include "Subdomain.h"
 #include "Hex_Local_Matrix.h"
 #include "rsf_solver.h"
 #include "PointVector.h"
 #include "gauss_3.h"
-#include "GeoPrepDocSettings.h"
 #define EpsComp 1e-6
 
 extern ofstream logfile;
-extern GeoPrepDocSettings GPDocSettings;
 
+//-----------------------------------------------------------
+// Class for double with accuracy
+//-----------------------------------------------------------
 struct double_eps
 {
 	double value;
 	void operator = (double &a){value=a;}
 	double get_value(){return value;}
 };
-
+//-----------------------------------------------------------
+// Equality operator
+//-----------------------------------------------------------
 bool operator == (double_eps &a,double_eps &b){return fabs(a.value-b.value)<EpsComp;}
+//-----------------------------------------------------------
+// Сomparison greater operator
+//-----------------------------------------------------------
 bool operator > (double_eps &a,double_eps &b){return a.value>b.value+EpsComp;}
+//-----------------------------------------------------------
+// Сomparison less operator
+//-----------------------------------------------------------
 bool operator < (double_eps &a,double_eps &b){return a.value<b.value-EpsComp;}
+//-----------------------------------------------------------
+// Сomparison greater or equal operator
+//-----------------------------------------------------------
 bool operator >= (double_eps &a,double_eps &b){return (a>b || a==b);}
+//-----------------------------------------------------------
+// Сomparison less or equal operator
+//-----------------------------------------------------------
 bool operator <= (double_eps &a,double_eps &b){return (a<b || a==b);}
-
+//-----------------------------------------------------------
+// Addition operator
+//-----------------------------------------------------------
 double_eps operator + (double_eps &a,double_eps &b)
 {
 	double_eps t;
 	t.value=a.value+b.value;
 	return t;
 }
-
+//-----------------------------------------------------------
+// Subtraction operator
+//-----------------------------------------------------------
 double_eps operator - (double_eps &a,double_eps &b)
 {
 	double_eps t;
 	t.value=a.value-b.value;
 	return t;
 }
-
+//-----------------------------------------------------------
+// Multiplication operator for double value
+//-----------------------------------------------------------
 double operator * (double_eps &a,double &b)
 {
 	return a.value*b;
 }
-
+//-----------------------------------------------------------
+// Multiplication operator
+//-----------------------------------------------------------
 double operator * (double_eps &a,double_eps &b)
 {
 	return a.value*b.value;
 }
 
-//------------------------------------------------------------------------
 bool SIGMANCOMP(_SIGMA_N el_1,_SIGMA_N el_2){return el_1.gtn < el_2.gtn;}
 int Sn[6][4]={{0,2,4,6},{0,1,4,5},{0,1,2,3},{1,3,5,7},{2,3,6,7},{4,5,6,7}};
-//------------------------------------------------------------------------
+
+//-----------------------------------------------------------
+// Constructor
+//-----------------------------------------------------------
 Subdomain::Subdomain()
 {
 	nver = NULL;
@@ -64,7 +108,9 @@ Subdomain::Subdomain()
 	d = NULL;
 	sg = NULL;
 }
-//------------------------------------------------------------------------
+//-----------------------------------------------------------
+// Destructor
+//-----------------------------------------------------------
 Subdomain::~Subdomain()
 {
 	if (p)    {delete p; p = NULL;}
@@ -80,75 +126,9 @@ Subdomain::~Subdomain()
 	if (d)    {delete [] d; d = NULL;}
 	if (sg)   {delete [] sg; sg = NULL;}
 }
-//------------------------------------------------------------------------
-int Subdomain::ExportTecplot(char *fname)
-{
-	FILE *fp=NULL;
-	long i;
-
-	fp=fopen(fname, "w");
-	if(fp==0)
-		Cannot_open_file(fname, "Subdomain::ExportTecplot");
-
-	fprintf(fp,"VARIABLES = \"X\", \"Y\", \"Z\" \n");
-	fprintf(fp, "ZONE N=%ld, E=%ld, F=FEPOINT, ET=BRICK\n", n_nodes, n_elem);
-
-	for (i=0; i<n_nodes; i++)
-		fprintf(fp, "%g %g %g\n", xyz[i][0], xyz[i][1], xyz[i][2]);
-
-	for(i=0; i<n_elem; i++)
-	{
-		// локальная нумерация вершин в Tecplot и у меня различается
-		fprintf(fp, "%ld\t", nver[i][0] + 1);   // 0 <-> 0
-		fprintf(fp, "%ld\t", nver[i][1] + 1); // 1 <-> 1
-		fprintf(fp, "%ld\t", nver[i][3] + 1); // 2 <-> 3
-		fprintf(fp, "%ld\t", nver[i][2] + 1); // 3 <-> 2
-		fprintf(fp, "%ld\t", nver[i][4] + 1); // 4 <-> 4
-		fprintf(fp, "%ld\t", nver[i][5] + 1); // 5 <-> 5
-		fprintf(fp, "%ld\t", nver[i][7] + 1); // 6 <-> 7
-		fprintf(fp, "%ld\t", nver[i][6] + 1); // 7 <-> 6
-		fprintf(fp, "\n");
-	}
-
-	fclose(fp);	
-
-	return 0;
-}
-//------------------------------------------------------------------------
-int Subdomain::ExportTecplot(char *fname, double *v3)
-{
-	FILE *fp=NULL;
-	long i;
-
-	fp=fopen(fname, "w");
-	if(fp==0)
-		Cannot_open_file(fname, "Subdomain::ExportTecplot");
-
-	fprintf(fp,"VARIABLES = \"X\", \"Y\", \"Z\", \"V\" \n");
-	fprintf(fp, "ZONE N=%ld, E=%ld, F=FEPOINT, ET=BRICK\n", n_nodes, n_elem);
-
-	for (i=0; i<n_nodes; i++)
-		fprintf(fp, "%g %g %g %g\n", xyz[i][0], xyz[i][1], xyz[i][2], v3[i]);
-
-	for(i=0; i<n_elem; i++)
-	{
-		// локальная нумерация вершин в Tecplot и у меня различается
-		fprintf(fp, "%ld\t", nver[i][0] + 1);   // 0 <-> 0
-		fprintf(fp, "%ld\t", nver[i][1] + 1); // 1 <-> 1
-		fprintf(fp, "%ld\t", nver[i][3] + 1); // 2 <-> 3
-		fprintf(fp, "%ld\t", nver[i][2] + 1); // 3 <-> 2
-		fprintf(fp, "%ld\t", nver[i][4] + 1); // 4 <-> 4
-		fprintf(fp, "%ld\t", nver[i][5] + 1); // 5 <-> 5
-		fprintf(fp, "%ld\t", nver[i][7] + 1); // 6 <-> 7
-		fprintf(fp, "%ld\t", nver[i][6] + 1); // 7 <-> 6
-		fprintf(fp, "\n");
-	}
-
-	fclose(fp);	
-
-	return 0;
-}
-//------------------------------------------------------------------------
+//-----------------------------------------------------------
+// Вuild smoothing subdomain
+//-----------------------------------------------------------
 int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &PointresForElem, AbstractFEM3D *TaskCalcMesh)
 {
 	int i, j, k, m, l, rr;
@@ -172,7 +152,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 	vector<int> renumNodeFromOldToNew;
 	renumNodeFromOldToNew.resize(kuzlov, -1);
 
-	// включаем в подобласть те элементы, в которых есть приемники
 	for (i=0; i<kpar; i++)
 	{
 		if (PointresForElem[i].size() > 0)
@@ -187,7 +166,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 
 			isElemInSubdomain[i] = true;
 
-			// узлы
 			for (j=0; j<nnoe; j++)
 			{
 				k = TaskCalcMesh->GetNodeNumberOnElement(i,j);
@@ -197,7 +175,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 		}
 	}
 
-	// включаем в подобласть соседей этих элементов
 	for (level=0; level < levelNeighbors; level++)
 	{
 		newElems.clear();
@@ -236,11 +213,9 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 				newElems.push_back(i);
 		}
 
-		// удаляем повторения
 		std::sort(newElems.begin(), newElems.end());
 		std::unique_copy(newElems.begin(), newElems.end(), back_inserter(newElems2));
 
-		// добавляем соседей
 		sz = (int)newElems2.size();
 		for (i=0; i<sz; i++)
 		{
@@ -256,7 +231,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 		}
 	}
 
-	// всего элементов и узлов в подобласти
 	this->n_elem = 0;
 	for (i=0; i<kpar; i++)
 	{
@@ -276,7 +250,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 
 	this->renumNodeFromNewToOld.resize(this->n_nodes, -1);
 
-	// перенумерация элементов
 	k = 0;
 	for (i=0; i<kpar; i++)
 	{
@@ -349,7 +322,7 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 	}
 
 
-	BuildSigmaStruct(PRE_SIGMA_N,this->xyz);	// только для параллелепипеидальных объектов
+	BuildSigmaStruct(PRE_SIGMA_N,this->xyz);
 
 
 	sort(PRE_SIGMA_N.begin(),PRE_SIGMA_N.end(),SIGMANCOMP);
@@ -374,7 +347,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 		}
 	}
 
-	// перенумерация узлов
 	this->n_nodes_dc = (int)SIGMA_N.size();
 	this->n_nodes_c = this->n_nodes - this->n_nodes_dc;
 
@@ -409,7 +381,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 
 	if (this->xyz_r)  {delete [] this->xyz_r;  this->xyz_r = NULL;}
 
-	// инициализация xyz
 	if (this->xyz)  {delete [] this->xyz;  this->xyz = NULL;}
 	this->xyz = new double[this->n_nodes][3];
 
@@ -422,7 +393,6 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 		this->xyz[i][2]=TempPoint.getz();
 	}
 
-	// инициализация nver (для узлового не подходит, видимо придется все равно передавать nver в конструктор для узловых)
 	if (this->nver) {delete [] this->nver; this->nver = NULL;}
 	this->nver = new long[this->n_elem][14];
 
@@ -441,8 +411,7 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 	logfile<<"Resultant mesh: "<<this->n_nodes<<" nodes; "<<this->n_elem<<" elements; "<<this->n_nodes-this->n_nodes_c<<" terminal nodes;"<<'\n';
 	cout<<"Resultant mesh: "<<this->n_nodes<<" nodes; "<<this->n_elem<<" elements; "<<this->n_nodes-this->n_nodes_c<<" terminal nodes;"<<'\n';
 
-// Коррекция терминальности узлов по ребру
-		int ktuzl,nc,p,ii,jj,kk,p1,p2;
+	int ktuzl,nc,p,ii,jj,kk,p1,p2;
 	bool Correct_T_Flag;
 	int pnt[2];
 	ktuzl=this->n_nodes_dc;
@@ -471,12 +440,11 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 				jj=(a2==b2);
 				kk=(a3==b3);
 
-				// Прямоугольная сетка
 				p = (ii && jj)? 2 : (ii && kk)? 1 : (jj && kk)? 0 : -1;
 				p1 = (ii && jj) ? 0 : (ii && kk) ? 0 : (jj && kk) ? 1 : -1;
 				p2 = (ii && jj) ? 1 : (ii && kk) ? 2 : (jj && kk) ? 2 : -1;
 				if(p!=-1){
-						Correct_T_Node(nc,SIGMA_N,i,p,pnt,Correct_T_Flag,this->xyz[pnt[0]][p1],this->xyz[pnt[0]][p2]);
+					Correct_T_Node(nc,SIGMA_N,i,p,pnt,Correct_T_Flag,this->xyz[pnt[0]][p1],this->xyz[pnt[0]][p2]);
 					SIGMA_N[i].bf[0]=pnt[0];
 					SIGMA_N[i].bf[1]=pnt[1];
 					SIGMA_N[i].val[0]=(this->xyz[pnt[1]][p]-this->xyz[SIGMA_N[i].gtn][p])/(this->xyz[pnt[1]][p]-this->xyz[pnt[0]][p]);
@@ -487,19 +455,16 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 	}while(Correct_T_Flag);
 
 
-	// Т-матрица
 	BuildTMatrix(SIGMA_N);
 
 	int *p_jg_t;
 	p_jg_t = (this->jg_t.size())? &(this->jg_t[0]) : NULL;
 
-	// портрет
 	this->p = new Portret(this->nver, this->n_elem, this->n_nodes, this->n_nodes_c,(long *) &(this->ig_t[0]),(long *) p_jg_t);
 	this->p->Gen_T_Portrait2();
 
 	vLV.resize(n_elem);
 
-	// Так как там xyz подменен на xyz0
 	for (i=0; i<this->n_nodes; i++)
 	{
 		pv::Point3D TempPoint;
@@ -509,26 +474,24 @@ int Subdomain::Init(int material, int levelNeighbors, vector< vector<long> > &Po
 		this->xyz[i][2]=TempPoint.getz();
 	}
 
-	// матрица
 	AsmGlobalMatrix();
 
 	return 0;
 }
-
-//------------------------------------------------------------------------
+//-----------------------------------------------------------
+// Assembling global matrix
+//-----------------------------------------------------------
 void Subdomain::AsmGlobalMatrix()
 {
 	long i, j, k, m, it, jt, i_mu, j_nu;
-	long ii, jj; // глобальные номера
+	long ii, jj;
 	long ig_n_1 = p->ig[n_nodes_c];
 
-	// выделяем память
 	if ((pr = new double[n_nodes_c]) == 0) Memory_allocation_error("pr", "AsmGlobalMatrix");
 	if ((x = new double[n_nodes]) == 0) Memory_allocation_error("x", "AsmGlobalMatrix");
 	if ((di = new double[n_nodes_c]) == 0) Memory_allocation_error("di", "AsmGlobalMatrix");
 	if ((gg = new double[ig_n_1]) == 0) Memory_allocation_error("gg", "AsmGlobalMatrix");
 
-	// зануление
 	for (i=0; i<n_nodes_c; i++)
 	{
 		di[i] = 0;
@@ -539,14 +502,11 @@ void Subdomain::AsmGlobalMatrix()
 	for (i=0; i<ig_n_1; i++)
 		gg[i] = 0;
 
-	// цикл по конечным элементам
 	for(i=0; i<n_elem; i++)
 	{
-		// вычисляем локальную матрицу
 		Hex_Local_Matrix L(i, nver, xyz);
 		L.CalcMassMatrix();
 
-		// заносим эл-ты в глобальную матрицу и вектор
 		for(j=0; j<8; j++)
 		{
 			vLV[i].g[j]=0.0;
@@ -554,13 +514,13 @@ void Subdomain::AsmGlobalMatrix()
 
 			ii = nver[i][j];
 
-			if(ii < n_nodes_c) // стандартный способ занесения
+			if(ii < n_nodes_c)
 			{ 
 				di[ii] += L.b[j][j];
 			}
-			else // занесение диагональных элементов нестандартным способом
+			else
 			{
-				for(it = p->ig_t[ii]; it <= p->ig_t[ii+1]-1; it++) //для всех компонент матрицы T, таких что T_{mu,i}!=0 && T_{nu,j}!=0
+				for(it = p->ig_t[ii]; it <= p->ig_t[ii+1]-1; it++)
 				{
 					i_mu = p->jg_t[it];
 
@@ -568,7 +528,7 @@ void Subdomain::AsmGlobalMatrix()
 					{
 						j_nu = p->jg_t[jt];
 
-						if(j_nu < i_mu) // в нижний треугольник
+						if(j_nu < i_mu)
 						{
 							for(m = p->ig[i_mu]; m <= p->ig[i_mu+1]-1; m++)
 							{
@@ -576,7 +536,7 @@ void Subdomain::AsmGlobalMatrix()
 									gg[m] += L.b[j][j] * gg_t[it] * gg_t[jt];
 							}
 						}
-						else if(j_nu == i_mu) // на диагональ
+						else if(j_nu == i_mu)
 						{
 							di[i_mu] += L.b[j][j] * gg_t[it] * gg_t[jt];
 						}
@@ -584,12 +544,11 @@ void Subdomain::AsmGlobalMatrix()
 				}//it
 			}
 
-			// занесение внедиагональных компонент локальной матрицы
 			for(k=0; k<8; k++)
 			{
 				jj = nver[i][k];
 
-				if(ii < n_nodes_c && jj < n_nodes_c) // стандартный способ занесения
+				if(ii < n_nodes_c && jj < n_nodes_c)
 				{ 
 					if(jj < ii) 
 					{
@@ -600,57 +559,56 @@ void Subdomain::AsmGlobalMatrix()
 						}
 					}
 				}
-				// здесь и далее - нестандартный способ занесения
 				else if(ii >= n_nodes_c && jj < n_nodes_c && j != k)
-				{ //для всех ненулевых компонент ii-го столбца матрицы T...
+				{
 					for(it = p->ig_t[ii]; it <= p->ig_t[ii+1]-1; it++)
 					{
 						i_mu = p->jg_t[it];
 
-						if(jj < i_mu) // в нижний треугольник
+						if(jj < i_mu)
 						{
 							for(m=p->ig[i_mu]; m<=p->ig[i_mu+1]-1; m++)
 								if(p->jg[m] == jj)
 									gg[m] += L.b[j][k] * gg_t[it];
 						}
-						else if(jj == i_mu) // на диагональ
+						else if(jj == i_mu)
 						{
 							di[i_mu] += L.b[j][k] * gg_t[it];
 						}
 					}
 				}
 				else if(ii < n_nodes_c && jj >= n_nodes_c && j!=k)
-				{//для всех ненулевых компонент jj-го столбца матрицы T...
+				{
 					for(it = p->ig_t[jj]; it <= p->ig_t[jj+1]-1; it++)
 					{
 						j_nu = p->jg_t[it];
-						if(j_nu < ii) // в нижний треугольник
+						if(j_nu < ii)
 						{
 							for(m = p->ig[ii]; m <= p->ig[ii+1]-1; m++)
 								if(p->jg[m] == j_nu)
 									gg[m] += L.b[j][k] * gg_t[it];
 						}
-						else if(j_nu == ii)  // в диагональный блок
+						else if(j_nu == ii)
 						{
 							di[j_nu] += L.b[j][k] * gg_t[it];
 						}
 					}
 				}
 				else if(ii >= n_nodes_c && jj >= n_nodes_c && j!=k)
-				{//для всех компонент матрицы T, таких что T_{mu,i}!=0 && T_{nu,j}!=0
+				{
 					for(it = p->ig_t[ii]; it <= p->ig_t[ii+1]-1; it++)
 					{
 						i_mu = p->jg_t[it];
 						for(jt = p->ig_t[jj]; jt <= p->ig_t[jj+1]-1; jt++)
 						{
 							j_nu = p->jg_t[jt];
-							if(j_nu < i_mu) // в нижний треугольник
+							if(j_nu < i_mu)
 							{
 								for(m = p->ig[i_mu]; m <= p->ig[i_mu+1]-1; m++)
 									if(p->jg[m] == j_nu)
 										gg[m] += L.b[j][k] * gg_t[it] * gg_t[jt];
 							}
-							else if(j_nu == i_mu) // в диагональный блок
+							else if(j_nu == i_mu)
 							{
 								di[i_mu] += L.b[j][k] * gg_t[it] * gg_t[jt];
 							}
@@ -663,34 +621,33 @@ void Subdomain::AsmGlobalMatrix()
 
 	prds.factorize_rsf(n_nodes_c,(int *)p->ig,(int *)p->jg,gg,di,1);
 }
-//------------------------------------------------------------------------
+//-----------------------------------------------------------
+// Assembling global vector
+//-----------------------------------------------------------
 void Subdomain::AsmGlobalVector()
 {
 	long i, j, it, i_mu;
-	long ii; // глобальные номера
+	long ii;
 	long ig_n_1 = p->ig[n_nodes_c];
 
-	// зануление
 	for (i=0; i<n_nodes_c; i++)
 		pr[i] = 0;
 
-	// цикл по конечным элементам
 	for(i=0; i<n_elem; i++)
 	{
 		Local_Vector &lv=vLV[i];
 
-		// заносим эл-ты в глобальный вектор
 		for(j=0; j<8; j++)
 		{
 			ii = nver[i][j];
 
 			if(ii < n_nodes_c)
-			{ // стандартный способ занесения
+			{
 				pr[ii] += lv.g[j]*ValueInCenter[i];
 			}
 			else
-			{// нестандартный способ занесения
-				for(it = p->ig_t[ii]; it<=p->ig_t[ii+1]-1; it++) // в вектор правой части
+			{
+				for(it = p->ig_t[ii]; it<=p->ig_t[ii+1]-1; it++)
 				{
 					i_mu = p->jg_t[it];
 					pr[i_mu] += lv.g[j]*ValueInCenter[i]*gg_t[it];
@@ -699,7 +656,9 @@ void Subdomain::AsmGlobalVector()
 		}// j
 	}// i
 }
-//------------------------------------------------------------------------
+//-----------------------------------------------------------
+// Calculate right part for element
+//-----------------------------------------------------------
 void Subdomain::CalcRightPartVect(T_Brick &L)
 {
 	int i,j;
@@ -715,16 +674,16 @@ void Subdomain::CalcRightPartVect(T_Brick &L)
 		int i1, j1;
 		double gauss_3_mult;
 
-		for(i=0; i<8; i++) // сначала обнуляем
+		for(i=0; i<8; i++)
 		{
 			for(j=0; j<8; j++)
 				LM.b[i][j] = 0.0;
 		}
 
-		for(i=0; i<27; i++) // по числу точек интегрирования
+		for(i=0; i<27; i++)
 		{
-			LM.Calc_J(i); // вычисляем Якобиан
-			gauss_3_mult = gauss_3_A_all[i]*LM.det_J_abs; // A_i*A_j*A_k*|J|
+			LM.Calc_J(i);
+			gauss_3_mult = gauss_3_A_all[i]*LM.det_J_abs;
 
 			for(i1=0; i1<8; i1++)
 			{
@@ -742,106 +701,9 @@ void Subdomain::CalcRightPartVect(T_Brick &L)
 		L.g8[i]*=BzOnElem;
 	}
 }
-
-void Subdomain::build_elem_neib_first(int nx,int ny,int nz,int *regular,vector<bool> &ElemCheck)
-{
-	int i,j,k,n_el,m_el,p_el,t_el;
-	int ex,ey,ez;
-	int bx,by,bz;
-	int m,size;
-
-	ElemNeibVec.clear();
-	ElemNeibVec.resize(n_elem);
-
-	ex=nx-1;ey=ny-1;ez=nz-1;
-	bx=ex-1;by=ey-1;bz=ez-1;
-
-	for(k=0;k<ez;k++){
-		for(j=0;j<ey;j++){
-			for(i=0;i<ex;i++){
-
-				n_el=regular[((ey*k)+j)*ex+i];
-				p_el=renumElemFromOldToNew[n_el];
-
-				if(ElemCheck[n_el]){
-
-					if(i>0){
-						m_el=regular[((ey*k)+j)*ex+(i-1)];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[0].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[0][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[0].push_back(t_el);
-						}
-					}
-
-					if(j>0){
-						m_el=regular[((ey*k)+(j-1))*ex+i];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[1].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[1][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[1].push_back(t_el);
-						}
-					}
-
-					if(k>0){
-						m_el=regular[((ey*(k-1))+j)*ex+i];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[2].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[2][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[2].push_back(t_el);
-						}						
-					}
-
-					if(i<bx){
-						m_el=regular[((ey*k)+j)*ex+(i+1)];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[3].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[3][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[3].push_back(t_el);
-						}
-					}
-
-					if(j<by){
-						m_el=regular[((ey*k)+(j+1))*ex+i];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[4].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[4][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[4].push_back(t_el);
-						}
-					}
-
-					if(k<bz){
-						m_el=regular[((ey*(k+1))+j)*ex+i];
-						t_el=renumElemFromOldToNew[m_el];
-						if(n_el!=m_el){
-							size=(int)ElemNeibVec[p_el].neib[5].size();
-							for(m=0;m<size;m++){
-								if(t_el==ElemNeibVec[p_el].neib[5][m])break;
-							}
-							if(m==size && ElemCheck[m_el])ElemNeibVec[p_el].neib[5].push_back(t_el);
-						}						
-					}
-				}
-			}
-		}
-	}
-}
-
+//-----------------------------------------------------------
+// Building the structure for terminal nodes
+//-----------------------------------------------------------
 void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 {
 	int i,ii,jj,ll,nn,mm,rr,tt,p,p1,p2;
@@ -870,7 +732,6 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 
 			tt=(int)ElemNeibVec[i].neib[ii].size();
 			for(rr=0;rr<tt;rr++){
-				// Сосед
 				mm=renumElemFromNewToOld[ElemNeibVec[i].neib[ii][rr]];
 
 				node_old[0]=nver[mm][Sn[ll][0]];
@@ -887,15 +748,11 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 				invhchd=invhc*invhd;
 
 				for(jj=0;jj<4;jj++){
-					// Старый терминальный узел
 					a1=xyz_p[node_new[jj]][p1];
 					b1=xyz_p[node_new[jj]][p2];
 					TTNE.gtn=node_new[jj];
-					// Совпадает == 2
 					eq=(a1==c1 || a1==c2)+(b1==d1 || b1==d2);
-					// Попадает в грань
 					if(eq!=2 && a1>=c1 && a1<=c2 && b1>=d1 && b1<=d2){
-						// На нижнем ребре
 						if(b1==d1){
 							TTNE.N=2;
 							TTNE.bf[0]=node_old[0];
@@ -904,7 +761,6 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 							TTNE.val[1]=(a1-c1)*invhc;
 							SIGMA_N.push_back(TTNE);
 						}
-						// На верхнем ребре
 						else if(b1==d2){
 							TTNE.N=2;
 							TTNE.bf[0]=node_old[2];
@@ -913,7 +769,6 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 							TTNE.val[1]=(a1-c1)*invhc;
 							SIGMA_N.push_back(TTNE);
 						}
-						// На левом ребре
 						else if(a1==c1){
 							TTNE.N=2;
 							TTNE.bf[0]=node_old[0];
@@ -922,7 +777,6 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 							TTNE.val[1]=(b1-d1)*invhd;
 							SIGMA_N.push_back(TTNE);
 						}
-						// На правом ребре
 						else if(a1==c2){
 							TTNE.N=2;
 							TTNE.bf[0]=node_old[1];
@@ -931,7 +785,6 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 							TTNE.val[1]=(b1-d1)*invhd;
 							SIGMA_N.push_back(TTNE);
 						}
-						// На грани
 						else{
 							TTNE.N=4;
 							TTNE.bf[0]=node_old[0];
@@ -950,7 +803,9 @@ void Subdomain::BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3])
 		}
 	}
 }
-
+//-----------------------------------------------------------
+// Correct T-matrix
+//-----------------------------------------------------------
 void Subdomain::Correct_T_Node(int nc,vector<_SIGMA_N> &SIGMA_N,int i,int p,int *pnt,bool &Correct_T_Flag, double pVal1, double pVal2)
 {
 	int j,k,m,n;
@@ -1010,7 +865,9 @@ void Subdomain::Correct_T_Node(int nc,vector<_SIGMA_N> &SIGMA_N,int i,int p,int 
 		}
 	}
 }
-
+//-----------------------------------------------------------
+// Build T-matrix
+//-----------------------------------------------------------
 void Subdomain::BuildTMatrix(vector<_SIGMA_N> &SIGMA_N)
 {
 	int a,b,ci;
@@ -1024,7 +881,7 @@ void Subdomain::BuildTMatrix(vector<_SIGMA_N> &SIGMA_N)
 	jg_t.clear();
 
 	m=0;
-	ig_t.resize(n_nodes_c+1,m);	// С единичным подвектором 
+	ig_t.resize(n_nodes_c+1,m);
 	for(j=0;j<n_nodes_dc;j++){
 		t=0;
 		for(li=0;li<SIGMA_N[j].N;li++){
@@ -1044,7 +901,9 @@ void Subdomain::BuildTMatrix(vector<_SIGMA_N> &SIGMA_N)
 		dv.clear();
 	}
 }
-
+//-----------------------------------------------------------
+// Calculate elemnts of T-matrix
+//-----------------------------------------------------------
 void Subdomain::calc_Tij(vector<_SIGMA_N> &SIGMA_N,int j,int li,vector<int> &iv,vector<double> &dv,int &t,double vklad)
 {
 	int i;
@@ -1063,7 +922,9 @@ void Subdomain::calc_Tij(vector<_SIGMA_N> &SIGMA_N,int j,int li,vector<int> &iv,
 		}
 	}
 }
-
+//-----------------------------------------------------------
+// Calculate values for terminal nodes
+//-----------------------------------------------------------
 void Subdomain::CalcValuesAll_Node(double *v)
 {
 	long i, j;
@@ -1077,5 +938,3 @@ void Subdomain::CalcValuesAll_Node(double *v)
 		v[i] = s;
 	}
 }
-
-

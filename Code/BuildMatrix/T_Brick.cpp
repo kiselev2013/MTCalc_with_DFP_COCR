@@ -1,3 +1,25 @@
+/**                                                                                                                 
+ * GENERAL REMARKS                                                                                                  
+ *                                                                                                                  
+ *  This code is freely available under the following conditions:                                                   
+ *                                                                                                                  
+ *  1) The code is to be used only for non-commercial purposes.                                                     
+ *  2) No changes and modifications to the code without prior permission of the developer.                          
+ *  3) No forwarding the code to a third party without prior permission of the developer.                           
+ *                                                                                                                  
+ *  			MTCalc_with_DFP_COCR                                                                        
+ *  This file contains some basic routines for generation of local matrices and local vector of the right hand side.
+ *  Calculation of values of basis functions inside a finite element.                                               
+ *                                                                                                                  
+ *  Written by Prof. Yuri G. Soloveichik, Prof. Marina G. Persova,  Ph.D. Petr A. Domnikov, Ph.D. Yulia I. Koshkina 
+ *  Novosibirsk State Technical University,                                                                         
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                               
+ *  Corresponding author:                                                                                           
+ *  E-mail: p_domnikov@mail.ru (Petr A. Domnikov)                                                                   
+ *  Version 1.3 March 30, 2021                                                                                      
+*/                                                                                                                  
+
+
 #include "stdafx.h"
 #include "T_Brick.h"
 
@@ -439,7 +461,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 	switch(what_compute)
 	{
 
-	case 1: // вычислить матрицу массы и вектор
+	case 1: // calculate the mass matrix and vector
 		Compute_Local_Matrix_C();
 
 		for(i=0; i<12; i++)
@@ -450,7 +472,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 		}
 		break;
 
-	case 2: // если требуетс€ только прибавить матрицу жЄсткости
+	case 2: // if you only need to add a stiffness matrix
 		Compute_Local_Matrix_B();
 
 		for(i=0; i<12; i++)
@@ -461,7 +483,7 @@ void T_Brick::Compute_Local_Matrix_And_Vector(const long what_compute)
 		}
 		break;
 
-	case 3: // собрать матрицу массы с коэффициентом диэлектрической проницаемости
+	case 3: // assemble mass matrix with dielectric coefficient
 		Compute_Local_Matrix_C();
 
 		for(i=0; i<12; i++)
@@ -1016,23 +1038,22 @@ void T_Brick::Mapping(double *in, double *out)
 
 void T_Brick::Calc_J_in_parallelepiped()
 {
-	// на параллелепипеде эл-ты матрицы якоби посто€нны,
-	// поэтому всЄ равно в какой точке вычисл€ть
+	//  on the parallelepiped the elements of the Jacobian matrices are constant, so it doesn't matter at which point to calculate
 
-	// эл-ты матрицы якоби
+	//elements of the Jacobian matrix
 	J[0][0] = hx*0.5;
 	J[1][1] = hy*0.5;
 	J[2][2] = hz*0.5;
 
 	J[0][1] = J[0][2] = J[1][0] = J[1][2] = J[2][0] = J[2][1] = 0.0;
 
-	// вычисл€ем якобиан (определитель)
+	// calculate Jacobian (determinant)
 	det_J = hx*hy*hz/8.0;
 
-	// модуль якобиана
+	// Jacobian modulus
 	det_J_abs = fabs(det_J);
 
-	// матрица, обратна€ к матрице якоби (и транспонированна€)
+	//matrix inverse to Jacobi matrix (and transposed)
 	J_1_T[0][0] = J_1[0][0] = 2.0/hx;
 	J_1_T[1][1] = J_1[1][1] = 2.0/hy;
 	J_1_T[2][2] = J_1[2][2] = 2.0/hz;
@@ -1045,8 +1066,9 @@ void T_Brick::Get_rotz_on_face(double *ves1, double *ves2, double *ves3,
 {
 	double t = 2.0/(hx*hy);
 
-	// rot_z на верхней грани=const и определ€етс€ 4-м€ базисными
-	// функци€ми, ассоциированными с рЄбрами, лежащими в этой грани
+	// rot_z on the upper face = const and is determined by 4 basis functions 
+	// associated with the edges lying in this face
+	// 
 	out1[0]=out1[1]=out1[2]=out1[3]=out1[4]=out1[5]=
 		out1[6]=out1[7]=out1[8] =
 			t*ves1[2] - t*ves1[3] - t*ves1[5] + t*ves1[7];
@@ -1071,16 +1093,16 @@ void T_Brick::RotZOnPar3(double z,
 	
 	*out1 = *out2 = *out3 = 0.0;
 
-	zz = Zeta(z); // Rot_z зависит только от z
+	zz = Zeta(z); // Rot_z depends only on z
 	t2 = 4.0/(hx*hy);
 	
-	// ненулева€ компонента ротора только у первых восьми баз. функций
+	// non-zero curl component only for the first eight basis functions
 	for (i=0; i<8; i++)
 	{
 		Rotz_of_basis_func_on_reference_vec_par(i, zz, &temp);
 
-		// так как требуетс€ только z-компонента ротора,
-		// умножаетс€ только последн€€ строчка матрицы якоби
+		// since only the z-component of the curl is required, 
+		// only the last row of the Jacobian matrix is multiplied    
 		t = temp*t2;
 		*out1 += t*ves1[i];
 		*out2 += t*ves2[i];
@@ -1148,13 +1170,13 @@ void T_Brick::RotZOnPar(double z, double *ves, double *out)
 	zz = Zeta(z);
 	t2 = 4.0/(hx*hy);
 
-	// ненулева€ компонента ротора только у первых восьми баз. функций
+	// non-zero curl component only for the first eight basis functions
 	for (i=0; i<8; i++)
 	{
 		Rotz_of_basis_func_on_reference_vec_par(i, zz, &temp);
 
-		// так как требуетс€ только z-компонента ротора,
-		// умножаетс€ только последн€€ строчка матрицы якоби
+		// since only the z-component of the curl is required, 
+		// only the last row of the Jacobian matrix is multiplied   
 		t = temp*t2;
 		*out += t*ves[i];
 	}
@@ -1441,8 +1463,8 @@ void normalize(double *v)
 void T_Brick::Calc_asin_acos_at_middle_of_edges()
 {
 	long i, j;
-	double u_sin[3], u_cos[3]; // значение нормального пол€ в середине ребра
-	double x_mid[3]; // координаты точки середины ребра
+	double u_sin[3], u_cos[3]; // value of the normal field in the middle of the edge
+	double x_mid[3]; // coordinates of the point of the middle of the edge
 
 	double v[3];
 

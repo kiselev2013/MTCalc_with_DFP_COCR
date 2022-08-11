@@ -1,6 +1,27 @@
+/**                                                                                                    
+ * GENERAL REMARKS                                                                                     
+ *                                                                                                     
+ *  This code is freely available under the following conditions:                                      
+ *                                                                                                     
+ *  1) The code is to be used only for non-commercial purposes.                                        
+ *  2) No changes and modifications to the code without prior permission of the developer.             
+ *  3) No forwarding the code to a third party without prior permission of the developer.              
+ *                                                                                                     
+ *  			MTCalc_with_DFP_COCR                                                           
+ *  This file contains subroutines for managing the number of OMP threads                              
+ *                                                                                                     
+ *  Written by Ph.D. Petr A. Domnikov                                                                  
+ *  Novosibirsk State Technical University,                                                            
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                  
+ *  p_domnikov@mail.ru                                                                                 
+ *  Version 1.3 April 12, 2021                                                                         
+*/                                                                                                     
+
 #include "stdafx.h"
 #include "ControlOMP.h"
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------   
+// Constructor                                                               
+//------------------------------------------------------------------------   
 ControlOMP::ControlOMP()
 {
 	isInit = false;
@@ -10,7 +31,9 @@ ControlOMP::ControlOMP()
 	nMinSparseMultMV = 10;
 	nMinSparseMultMV2x2 = 10;
 }
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------     
+// Destructor                                                                  
+//------------------------------------------------------------------------     
 ControlOMP::~ControlOMP()
 {
 }

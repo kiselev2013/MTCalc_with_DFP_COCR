@@ -1,5 +1,8 @@
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// Header file for linalg.cpp
+
 #pragma once
-//------------------------------------------------------------------------
 complex<double> dot(complex<double> *a, complex<double> *b, int n);
 void ger(complex<double> *a, complex<double> *x, complex<double> *y, int n, int m, int lda);
 int getf2(complex<double> *a, int m, int n, int lda);

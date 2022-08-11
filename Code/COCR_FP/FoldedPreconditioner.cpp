@@ -1,8 +1,30 @@
+/**                                                                                                                       
+ * GENERAL REMARKS                                                                                                        
+ *                                                                                                                        
+ *  This code is freely available under the following conditions:                                                         
+ *                                                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                                                           
+ *  2) No changes and modifications to the code without prior permission of the developer.                                
+ *  3) No forwarding the code to a third party without prior permission of the developer.                                 
+ *                                                                                                                        
+ *  			MTCalc_with_DFP_COCR                                                                              
+ *  This file contains subroutines for the folded preconditioner       
+ *                                                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                                                     
+ *  Novosibirsk State Technical University,                                                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                                     
+ *  p_domnikov@mail.ru                                                                                                    
+ *  Version 1.2 April 9, 2021                                                                                             
+*/                                                                                                                        
+
+
 #include "stdafx.h"
 #include "FoldedPreconditioner.h"
 #include "ControlOMP.h"
 extern ControlOMP omp;
 extern ofstream logfile;
+//------------------------------------------------------------------------
+// Constructor
 //------------------------------------------------------------------------
 FoldedPreconditioner::FoldedPreconditioner()
 {
@@ -24,6 +46,8 @@ FoldedPreconditioner::FoldedPreconditioner()
 	help3 = NULL;
 }
 //------------------------------------------------------------------------
+// Destructor
+//------------------------------------------------------------------------
 FoldedPreconditioner::~FoldedPreconditioner()
 {
 	if (iptr_g) {delete [] iptr_g; iptr_g=NULL;}
@@ -38,7 +62,9 @@ FoldedPreconditioner::~FoldedPreconditioner()
 	if (help2) {delete [] help2; help2=NULL;}
 	if (help3) {delete [] help3; help3=NULL;}
 }
-//----------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------
+// Construction of the discrete gradient matrix
+//------------------------------------------------------------------------
 void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 				   int *nvkat, int (*nver)[14], double *sigma3d, int (*edges)[2],
 				   int *ig_t, int *jg_t, double *gg_t, int *is_node_bound)
@@ -58,7 +84,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 
 	n = n_edges_c;
 
-	// находим число (регулярных) узлов в проводящей среде
+	// finding the number of (conforming) nodes in a conductive medium
 
 	isNodeInSigma.resize(n_nodes_c, 0);
 
@@ -74,7 +100,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 
 				if (node < n_nodes_c)
 				{
-					// пропускаем узлы, лежащие на границе расчетной области
+					// skip the nodes lying on the boundary of the computational domain
 					if (is_node_bound[node])
 						continue;
 
@@ -84,7 +110,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 		}
 	}
 
-	// узлы, лежащие в проводящей среде, нумеруем первыми
+	// the nodes lying in the conductive medium are numbered first
 	vector<int> nodeRenum;
 	nodeRenum.resize(n_nodes_c, -1);
 
@@ -98,9 +124,9 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 		}			
 	}
 
-	m = k; // запоминаем количество узлов в проводящей среде
+	m = k; // save the number of nodes in the conductive medium
 
-	// заполняем iptr_gt[]
+	// fill iptr_gt[]
 	iptr_gt = new int[n_edges_c+1];
 	iptr_gt[0] = 0;
 
@@ -133,7 +159,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 	jptr_gt = new int[iptr_gt[n_edges_c]];
 	gg_gt = new double[iptr_gt[n_edges_c]];
 
-	// заполняем jptr_gt[] и gg_gt[]
+	// fill jptr_gt[] and gg_gt[]
 	j = 0;
 	for (i=0; i<n_edges_c; i++)
 	{
@@ -194,7 +220,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 		}
 	}
 
-	// считаем сколько элементов в каждом столбце
+	// count how many elements are in each column
 	vector<int> temp;
 	temp.resize(m, 0);
 
@@ -206,7 +232,7 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 		}
 	}
 
-	// транспонируем
+	// transpose
 	iptr_g = new int[m+1];
 	jptr_g = new int[iptr_gt[n_edges_c]];
 	gg_g = new double[iptr_gt[n_edges_c]];
@@ -231,6 +257,8 @@ void FoldedPreconditioner::BuildGMatrix(int kpar, int n_edges_c, int n_nodes_c,
 		}
 	}	
 }
+//------------------------------------------------------------------------
+// / Build the main diagonal of the matrix P(G+M)PT
 //------------------------------------------------------------------------
 void FoldedPreconditioner::BuildDiag(int *ig, int *jg, double *di, double *gg)
 {
@@ -280,12 +308,12 @@ void FoldedPreconditioner::BuildDiag(int *ig, int *jg, double *di, double *gg)
 
 			sum = 0;
 
-			// умножаем k-ю строчку матрицы A на i-й столбец матрицы G^T
+			// multiply k-th row of matrix A by i-th column of matrix G^T
 			for (i2=iptr_a[k]; i2<iptr_a[k+1]; i2++)
 			{
 				j2 = jptr_a[i2];
 
-				// ищем элемент G(i, j2)
+				// find element G(i, j2)
 				for (i3=iptr_g[i]; i3<iptr_g[i+1]; i3++)
 				{
 					if (jptr_g[i3]==j2)
@@ -317,6 +345,8 @@ void FoldedPreconditioner::BuildDiag(int *ig, int *jg, double *di, double *gg)
 	if (jptr_a) {delete [] jptr_a; jptr_a=NULL;}
 	if (aelem)  {delete [] aelem; aelem=NULL;}
 }
+//------------------------------------------------------------------------
+// Applying the folded preconditioner to a vector
 //------------------------------------------------------------------------
 void FoldedPreconditioner::ApplyPreconditioner(double *x, double *y)
 {
@@ -361,8 +391,10 @@ void FoldedPreconditioner::ApplyPreconditioner(double *x, double *y)
 			y[i] += gg_gt[j]*help[k];
 		}
 	}
-}// parallel
+}// end parallel
 }
+//------------------------------------------------------------------------
+// Conversion to the CSR format
 //------------------------------------------------------------------------
 void FoldedPreconditioner::FromRSFtoCSR_1(int n, int *ig, int *sz_iptr, int *sz_jptr)
 {
@@ -370,19 +402,21 @@ void FoldedPreconditioner::FromRSFtoCSR_1(int n, int *ig, int *sz_iptr, int *sz_
 	*sz_jptr = ig[n]*2 + n;
 }
 //------------------------------------------------------------------------
+// Conversion to the CSR format
+//------------------------------------------------------------------------
 void FoldedPreconditioner::FromRSFtoCSR_2(int n, int *ig, int *jg, double *di, double *ggl, double *ggu, int *iptr, int *jptr, double *aelem)
 {
 	int i, j, k;
 	vector<int> col; 
 
-	// подсчитываем число элементов в каждой строчке
+	// counting the number of elements in each row
 	col.resize(n, 0);
 
 	for (i=0; i<n; i++)
 	{
-		col[i] += ig[i+1] - ig[i] + 1; // нижний треугольник + диагональ
+		col[i] += ig[i+1] - ig[i] + 1; // lower triangle + diagonal
 
-		// верхний треугольник
+		// upper triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -402,11 +436,11 @@ void FoldedPreconditioner::FromRSFtoCSR_2(int n, int *ig, int *jg, double *di, d
 
 	// jptr, aelem
 	for (i=0; i<n; i++)
-		col[i] = iptr[i]; // в какую позицию заносить значение
+		col[i] = iptr[i]; // in which position to put the value
 
 	for (i=0; i<n; i++)
 	{
-		// нижний треугольник
+		// lower triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			k = jg[j];
@@ -415,13 +449,13 @@ void FoldedPreconditioner::FromRSFtoCSR_2(int n, int *ig, int *jg, double *di, d
 			col[i]++;
 		}
 
-		// диагональ
+		// diagonal
 		jptr[col[i]] = i;
 		aelem[col[i]] = di[i];
 		col[i]++;
 	}
 
-	// верхний треугольник
+	// upper triangle
 	for (i=0; i<n; i++)
 	{
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
@@ -433,6 +467,8 @@ void FoldedPreconditioner::FromRSFtoCSR_2(int n, int *ig, int *jg, double *di, d
 		}
 	}
 }
+//------------------------------------------------------------------------
+// Build the main complex-valued diagonal of the matrix P(G+iwM)PT
 //------------------------------------------------------------------------
 void FoldedPreconditioner::BuildDiagComplex(int *ig, int *jg, int *idi, int *ijg, double *di, double *gg)
 {
@@ -496,12 +532,12 @@ void FoldedPreconditioner::BuildDiagComplex(int *ig, int *jg, int *idi, int *ijg
 
 			sum = 0;
 
-			// умножаем k-ю строчку матрицы A на i-й столбец матрицы G^T
+			// multiply k-th row of matrix A by i-th column of matrix G^T
 			for (i2=iptr_a[k]; i2<iptr_a[k+1]; i2++)
 			{
 				j2 = jptr_a[i2];
 
-				// ищем элемент G(i, j2)
+				// find element G(i, j2)
 				for (i3=iptr_g[i]; i3<iptr_g[i+1]; i3++)
 				{
 					if (jptr_g[i3]==j2)
@@ -536,6 +572,8 @@ void FoldedPreconditioner::BuildDiagComplex(int *ig, int *jg, int *idi, int *ijg
 	if (ijptr_a) {delete [] ijptr_a; ijptr_a=NULL;}
 	if (aelem)  {delete [] aelem; aelem=NULL;}
 }
+//------------------------------------------------------------------------
+// Applying the complex-valued folded preconditioner to a vector
 //------------------------------------------------------------------------
 void FoldedPreconditioner::ApplyPreconditionerComplex(double *x, double *y)
 {
@@ -590,6 +628,8 @@ void FoldedPreconditioner::ApplyPreconditionerComplex(double *x, double *y)
 }
 }
 //------------------------------------------------------------------------
+// Conversion to the block CSR format
+//------------------------------------------------------------------------
 void FoldedPreconditioner::From2x2ToCSR2x2_1(int n, int *ig, int *idi, int *ijg,
 										int *sz_iptr, int *sz_jptr, int *sz_ijptr, int *sz_aelem)
 {
@@ -598,6 +638,8 @@ void FoldedPreconditioner::From2x2ToCSR2x2_1(int n, int *ig, int *idi, int *ijg,
 	*sz_ijptr = ig[n]*2 + n + 1;
 	*sz_aelem = ijg[ig[n]]*2 + idi[n];
 }
+//------------------------------------------------------------------------
+// Conversion to the block CSR format
 //------------------------------------------------------------------------
 void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, int *ijg,
 										double *di_block, double *gg_block, 
@@ -608,13 +650,13 @@ void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, 
 	vector<int> col; 
 	vector<int> col2; 
 
-	// подсчитываем число элементов в каждой строчке
+	// counting the number of elements in each row
 	col.resize(n, 0);
-	col2.resize(n, 0); // размер строчек
+	col2.resize(n, 0); // rows sizes
 
 	for (i=0; i<n; i++)
 	{
-		col[i] += ig[i+1] - ig[i] + 1; // нижний треугольник + диагональ
+		col[i] += ig[i+1] - ig[i] + 1; // lower triangle + diagonal
 		col2[i] += (ijg[ig[i+1]] - ijg[ig[i]]) + (idi[i+1] - idi[i]);
 
 		// верхний треугольник
@@ -641,15 +683,15 @@ void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, 
 	// jptr, ijptr, aelem
 	ijptr[0] = 0;
 	for (i=0; i<n; i++)
-		ijptr[iptr[i+1]] = ijptr[iptr[i]] + col2[i]; // в какую позицию заносить значение aelem
+		ijptr[iptr[i+1]] = ijptr[iptr[i]] + col2[i]; //in which position to put the value of aelem
 
 	for (i=0; i<n; i++)
-		col[i] = iptr[i]; // в какую позицию заносить значение
+		col[i] = iptr[i]; // in which position to put the value
 
 	ijptr[0] = 0;
 	for (i=0; i<n; i++)
 	{
-		// нижний треугольник
+		// lower triangle
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
 		{
 			jptr[col[i]] = jg[j];
@@ -664,7 +706,7 @@ void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, 
 			col[i]++;
 		}
 
-		// диагональ
+		// diagonal
 		jptr[col[i]] = i;
 		sz = idi[i+1] - idi[i];
 		ijptr[col[i]+1] = ijptr[col[i]] + sz;
@@ -675,7 +717,7 @@ void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, 
 		col[i]++;
 	}
 
-	// верхний треугольник
+	// upper triangle
 	for (i=0; i<n; i++)
 	{
 		for (j=ig[i]; j<=ig[i+1]-1; j++)
@@ -692,6 +734,8 @@ void FoldedPreconditioner::From2x2ToCSR2x2_2(int n, int *ig, int *jg, int *idi, 
 		}
 	}	
 }
+//------------------------------------------------------------------------
+// Initialization of the folded preconditioner
 //------------------------------------------------------------------------
 void FoldedPreconditioner::Prepare(int kpar, int n_edges_c, int n_nodes_c,
 								   int *nvkat, int (*nver)[14], double *sigma3d, int (*edges)[2],

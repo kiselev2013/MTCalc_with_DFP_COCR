@@ -1,3 +1,22 @@
+/**                                                                                                    
+ * GENERAL REMARKS                                                                                     
+ *                                                                                                     
+ *  This code is freely available under the following conditions:                                      
+ *                                                                                                     
+ *  1) The code is to be used only for non-commercial purposes.                                        
+ *  2) No changes and modifications to the code without prior permission of the developer.             
+ *  3) No forwarding the code to a third party without prior permission of the developer.              
+ *                                                                                                     
+ *  			MTCalc_with_DFP_COCR                                                           
+ *  This file contains the basic routines for reading/writing files both in the binary and text formats
+ *                                                                                                     
+ *  Written by Ph.D. Petr A. Domnikov                                                                  
+ *  Novosibirsk State Technical University,                                                            
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                  
+ *  p_domnikov@mail.ru                                                                                 
+ *  Version 1.4 December 18, 2020                                                                       
+*/                                                                                                     
+
 #include "stdafx.h"
 #include "in_out.h"
 extern ofstream logfile;
@@ -28,7 +47,7 @@ int In_Out::Write_Txt_File_Of_Long(char *fname, long *massiv, long n_of_records,
 	for(i=0; i<n_of_records; i++)
 	{
 		for(j=0; j<len_of_record; j++)
-			fprintf(fp,"%ld\t", massiv[i*len_of_record + j]+1); // прибавляется единица
+			fprintf(fp,"%ld\t", massiv[i*len_of_record + j]+1);
 		fprintf(fp,"\n");
 	}
 	cout << " done\n";
@@ -91,14 +110,12 @@ int In_Out::Write_Bin_File_Of_Double(char *fname, double *massiv, long n_of_reco
 	double value;
 	FILE *fp;
 
-	// открываем файл на запись
 	if((fp=fopen(fname,"w+b"))==0)
 	{
 		Cannot_open_file_but_continue(fname, "In_Out::Write_Bin_File_Of_Double");
 		return 1;
 	}
 
-	// чтение
 	for(i=0; i<n_of_records; i++)
 		for(j=0; j<len_of_record; j++)
 		{
@@ -207,14 +224,12 @@ int In_Out::Read_Bin_File_Of_Double(char *fname, double *massiv, long n_of_recor
 	double value;
 	FILE *fp;
 
-	// открываем файл на чтение
 	if((fp=fopen(fname,"r+b"))==0)
 	{
 		Cannot_open_file_but_continue(fname, "In_Out::Read_Bin_File_Of_Double");
 		return 1;
 	}
 
-	// чтение
 	cout << "reading " << fname << "...\n";
 
 	for(i=0; i<n_of_records; i++)
@@ -246,14 +261,12 @@ int In_Out::Read_Bin_File_Of_Long(char *fname, long *massiv, long n_of_records, 
 	long value;
 	FILE *fp;
 
-	// открываем файл на чтение
 	if((fp=fopen(fname,"r+b"))==0)
 	{
 		Cannot_open_file_but_continue(fname, "In_Out::Read_Bin_File_Of_Long");
 		return 1;
 	}
 
-	// чтение
 	for(i=0; i<n_of_records; i++)
 		for(j=0; j<len_of_record; j++)
 		{
@@ -283,14 +296,12 @@ int In_Out::Read_Bin_File_Of_Short(char *fname, short *massiv, long n_of_records
 	short value;
 	FILE *fp;
 
-	// открываем файл на чтение
 	if((fp=fopen(fname,"r+b"))==0)
 	{
 		Cannot_open_file_but_continue(fname, "In_Out::Read_Bin_File_Of_Long");
 		return 1;
 	}
 
-	// чтение
 	for(i=0; i<n_of_records; i++)
 		for(j=0; j<len_of_record; j++)
 		{
@@ -320,14 +331,12 @@ int In_Out::Write_Bin_File_Of_Long(char *fname, long *massiv, long n_of_records,
 	long value;
 	FILE *fp;
 
-	// открываем файл на запись
 	if((fp=fopen(fname,"w+b"))==0)
 	{
 		Cannot_open_file_but_continue(fname, "In_Out::Write_Bin_File_Of_Long");
 		return 1;
 	}
 
-	// чтение
 	for(i=0; i<n_of_records; i++)
 		for(j=0; j<len_of_record; j++)
 		{
@@ -354,20 +363,16 @@ int In_Out::Convert_File_Of_Double_From_Bin_To_Txt(char *file_in, char *file_out
 {
 	double *array_of_double=NULL;
 
-	// выделяем память
 	size_of_array = n_of_records*len_of_record;
 
 	array_of_double = new double[size_of_array];
 	if(array_of_double == 0)
 		Memory_allocation_error("array_of_double", "Convert_File_Of_Double_From_Bin_To_Txt");
 
-	// читаем
 	Read_Bin_File_Of_Double(file_in, array_of_double, n_of_records, len_of_record);
 
-	// пишем
 	Write_Txt_File_Of_Double(file_out, array_of_double, n_of_records, len_of_record);
 
-	// освобождаем память
 	if(array_of_double) {delete [] array_of_double; array_of_double=NULL;}
 
 	return 0;
@@ -377,20 +382,19 @@ int In_Out::Convert_File_Of_Long_From_Bin_To_Txt(char *file_in, char *file_out, 
 {
 	long *array_of_long=NULL;
 
-	// выделяем память
 	size_of_array = n_of_records*len_of_record;
 
 	array_of_long = new long[size_of_array];
 	if(array_of_long == 0)
 		Memory_allocation_error("array_of_long", "In_Out::Convert_File_Of_Long_From_Bin_To_Txt");
 
-	// читаем
+
 	Read_Bin_File_Of_Long(file_in, array_of_long, n_of_records, len_of_record);
 
-	// пишем
+
 	Write_Txt_File_Of_Long(file_out, array_of_long, n_of_records, len_of_record);
 
-	// освобождаем память
+
 	if(array_of_long) {delete [] array_of_long; array_of_long=NULL;}
 
 	return 0;
@@ -411,7 +415,7 @@ int In_Out::Write_jg(char *fname, long *ig, long *jg, long n)
 	for(i=0; i<n; i++)
 	{
 		for(j=ig[i]; j<ig[i+1]; j++)
-			fprintf(fp,"%ld\t", jg[j] + 1); // прибавляется единица
+			fprintf(fp,"%ld\t", jg[j] + 1); 
 		fprintf(fp,"\n");
 	}
 	printf("done\n");

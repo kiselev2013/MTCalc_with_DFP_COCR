@@ -1,16 +1,42 @@
+/**                                                                                        
+ * GENERAL REMARKS                                                                         
+ *                                                                                         
+ *  This code is freely available under the following conditions:                          
+ *                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                            
+ *  2) No changes and modifications to the code without prior permission of the developer. 
+ *  3) No forwarding the code to a third party without prior permission of the developer.  
+ *                                                                                         
+ *  			MTCalc_with_DFP_COCR                                               
+ *  This file contains subroutines for basic vector and matrix-vector operations
+ *                                                                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                      
+ *  Novosibirsk State Technical University,                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                      
+ *  p_domnikov@mail.ru                                                                     
+ *  Version 1.3 April 7, 2021                                                              
+*/                                                                                         
+
+
 #include "stdafx.h"
 #include "base_solver.h"
 #include "ControlOMP.h"
 extern ControlOMP omp;
 extern ofstream logfile;
 //-----------------------------------------------------------------
+// Constuctor
+//-----------------------------------------------------------------
 Base_solver::Base_solver()
 {
 }
 //-----------------------------------------------------------------
+// Destructor
+//-----------------------------------------------------------------
 Base_solver::~Base_solver()
 {
 }
+//-----------------------------------------------------------------
+// dot product
 //-----------------------------------------------------------------
 inline double Base_solver::Scal(double *x, double *y, int n)
 {
@@ -29,6 +55,8 @@ inline double Base_solver::Scal(double *x, double *y, int n)
 	return sum;
 }
 //-----------------------------------------------------------------
+// vector euclidean norm
+//-----------------------------------------------------------------
 double Base_solver::Norm_Euclid(double *x, int n)
 {
 	double temp;
@@ -40,10 +68,14 @@ double Base_solver::Norm_Euclid(double *x, int n)
 	return 0.0;
 }
 //----------------------------------------------------------------------
+// projection of a vector onto an axis
+//----------------------------------------------------------------------
 double Base_solver::Projection(double *vec, double *axis)
 {
 	return Scal(vec,axis,3)/Norm_Euclid(axis,3);
 }
+//---------------------------------------------------------------------------
+// Matrix-vector multiplication  (in dense format)
 //---------------------------------------------------------------------------
 void Base_solver::Mult_Plot(double *a,double *pr,double *rez,int n)
 {
@@ -52,7 +84,7 @@ void Base_solver::Mult_Plot(double *a,double *pr,double *rez,int n)
 		rez[i] = this->Scal(&a[i*n], pr, n);
 }
 //----------------------------------------------------------
-//-------------- дл€ вращений √ивенса ----------------------
+// Givens rotations
 //----------------------------------------------------------
 int Base_solver::Givens1(double& x, double& y, double& c, double& s)
 {
@@ -99,7 +131,7 @@ int Base_solver::Givens(double *a, double *f, int n)
 	return 0;
 }
 //------------------------------------------------------------
-//----------- обратный ход по плотной матрице ----------------
+// Solution of a system with a lower triangular matrix in a dense format
 //------------------------------------------------------------
 int Base_solver::Undirect(double *a, double *b, double *x, int n)
 {
@@ -119,12 +151,15 @@ int Base_solver::Undirect(double *a, double *b, double *x, int n)
 	return 0;
 }
 //------------------------------------------------------------
+// Solution of a SLAE with a square matrix whose lower triangle contains only one non - zero subdiagonal.	
+// This is necessary if the Arnoldi orthogonalization fails
+//------------------------------------------------------------
 int Base_solver::Solve_square_subdiag(double *a, double *b, double *x, int n)
 {
 	int j, k;
 	double mult;
 
-	// приводим к верхнетреугольному виду
+	// reduce to upper triangular form
 	for(j=0; j<n-1; j++)
 	{
 		mult = -a[(j+1)*n+j]/a[j*n+j];
@@ -135,11 +170,14 @@ int Base_solver::Solve_square_subdiag(double *a, double *b, double *x, int n)
 		b[j+1] += mult*b[j];
 	}
 
-	// обратный ход
+	// a back
 	Undirect(a, b, x, n);
 
 	return 0;
 }
+//------------------------------------------------------------
+// writing to the file the relative discrepancy with which they came out, eps, the number of iterations and the time of solving the SLAE
+//------------------------------------------------------------
 int Base_solver::WriteKitChrono(char *fname, double residual, double eps, int iter, double time)
 {
 	FILE *fp;
@@ -160,7 +198,9 @@ int Base_solver::WriteKitChrono(char *fname, double residual, double eps, int it
 
 	return 0;
 }
-//------------------------------------------------------------
+//------------------------------------------------------------                                                                                 
+// writing to the file the relative discrepancy with which they came out, eps, the number of iterations and the time of solving the SLAE       
+//------------------------------------------------------------                                                                                 
 int Base_solver::Write_kit(char *fname, double residual, double eps, int iter, int time)
 {
 	int hours, minutes, seconds;
@@ -273,6 +313,8 @@ int Base_solver::Write_kit(char *fname, double residual, double eps, int iter, i
 	return 0;
 }
 //------------------------------------------------------------
+// relative error
+//------------------------------------------------------------
 double Base_solver::Relative_Error(double *analytic, double *numeric, int n)
 {
 	double *razn;
@@ -303,11 +345,10 @@ double Base_solver::Relative_Error(double *analytic, double *numeric, int n)
 	return error;
 }
 //-----------------------------------------------------------
-//
+// linear interpolation
 //-----------------------------------------------------------
 double Base_solver::Spline(double x, int n, double *xyz, double *values)
 {
-	// n - число элементов
 	double s, xi;
 	int i, t, flag;
 
@@ -315,7 +356,6 @@ double Base_solver::Spline(double x, int n, double *xyz, double *values)
 
 	for(i=0; i<n; i++)
 	{
-		// лучше всего конечно сделать здесь двоичный поиск
 		if(x >= xyz[i]  &&  x <= xyz[i+1])
 		{
 			t = i;
@@ -337,7 +377,7 @@ double Base_solver::Spline(double x, int n, double *xyz, double *values)
 		return s;
 }
 //------------------------------------------------------------------------
-// комплексно-сопр€женное скал€рное произведение
+// complex conjugate dot product
 //------------------------------------------------------------------------
 std::complex<double> Base_solver::ScalCmplx(double *x, double *y, int nb)
 {
@@ -358,7 +398,7 @@ std::complex<double> Base_solver::ScalCmplx(double *x, double *y, int nb)
 	return std::complex<double>(s_re, s_im);
 }
 //------------------------------------------------------------------------
-// скал€рное произведение дл€ комплекснозначных векторов
+// dot product for complex-valued vectors
 //------------------------------------------------------------------------
 std::complex<double> Base_solver::ScalCmplxTrue(double *x, double *y, int nb)
 {
@@ -375,7 +415,7 @@ std::complex<double> Base_solver::ScalCmplxTrue(double *x, double *y, int nb)
 	return std::complex<double>(s_re, s_im);
 }
 //------------------------------------------------------------------------
-// умножение вектора на комплексное число
+// multiplication of a vector by a complex number
 //------------------------------------------------------------------------
 void Base_solver::MultCmplxNumVect(std::complex<double> a, double *x, double *y, int nb)
 {
@@ -411,7 +451,7 @@ void Base_solver::Cmplx_axpy(std::complex<double> a, double *x, double *y, doubl
 	}
 }
 //------------------------------------------------------------------------
-// умножение компонент одного комплексного вектора на компоненты другого комплексного вектора
+// multiplication of components of one complex vector by components of another complex vector
 //------------------------------------------------------------------------
 void Base_solver::MultCmplxVectVect(int nb, double *a, double *b, double *c)
 {
@@ -432,7 +472,7 @@ void Base_solver::MultCmplxVectVect(int nb, double *a, double *b, double *c)
 	}
 }
 //------------------------------------------------------------------------
-// деление компонент одного комплексного вектора на компоненты другого комплексного вектора
+// division of the components of one complex vector into components of another complex vector
 //------------------------------------------------------------------------
 void Base_solver::DivCmplxVectVect(int nb, double *a, double *b, double *c)
 {

@@ -1,9 +1,28 @@
+/**                                                                                         
+ * GENERAL REMARKS                                                                          
+ *                                                                                          
+ *  This code is freely available under the following conditions:                           
+ *                                                                                          
+ *  1) The code is to be used only for non-commercial purposes.                             
+ *  2) No changes and modifications to the code without prior permission of the developer.  
+ *  3) No forwarding the code to a third party without prior permission of the developer.   
+ *                                                                                          
+ *  			MTCalc_with_DFP_COCR                                                
+ *  Minimal residual smoothing (MRS)           
+ *                                                                                          
+ *  Written by Ph.D. Petr A. Domnikov                                                       
+ *  Novosibirsk State Technical University,                                                 
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                       
+ *  p_domnikov@mail.ru                                                                      
+ *  Version 1.2 April 7, 2021                                                               
+*/                                                                                          
+
+
 #include "StdAfx.h"
 #include "MRS.h"
 #include "base_solver.h"
 #include "ControlOMP.h"
 extern ControlOMP omp;
-
 //------------------------------------------------------------------------
 MRS::MRS(int n)
 {
@@ -61,6 +80,8 @@ void MRS::GetSolution(double *a)
 	memcpy_s(a, n*sizeof(double), y, n*sizeof(double));
 }
 //------------------------------------------------------------------------
+// Real-valued MRS
+//------------------------------------------------------------------------
 void MRS::Mrs(double *x, double *r)
 {
 	int i;
@@ -102,7 +123,7 @@ void MRS::Mrs(double *x, double *r)
 		{
 			w = 0;
 		} 
-		else if (w > 1) // проверить правда ли быстрее сходится
+		else if (w > 1)
 		{
 			w = 1;
 
@@ -130,6 +151,8 @@ void MRS::Mrs(double *x, double *r)
 		}
 	}
 }
+//------------------------------------------------------------------------
+// Complex-valued MRS
 //------------------------------------------------------------------------
 void MRS::MrsCmplx(double *x, double *r)
 {
@@ -182,7 +205,7 @@ void MRS::MrsCmplx(double *x, double *r)
 		{
 			w_re = w_im = 0;
 		} 
-		else if (abs(std::complex<double>(w_re, w_im)) > 1) // проверить правда ли быстрее сходится
+		else if (abs(std::complex<double>(w_re, w_im)) > 1)
 		{
 			w_re = 1;
 			w_im = 0;

@@ -1,3 +1,22 @@
+/**                                                                                       
+ * GENERAL REMARKS                                                                        
+ *                                                                                        
+ *  This code is freely available under the following conditions:                         
+ *                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                           
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer. 
+ *                                                                                        
+ *  			MTCalc_with_DFP_COCR                                              
+ *  This file contains a structures of finite element mesh storing                        
+ *                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov and Ph.D. Dmitry S. Kiselev                                                    
+ *  Novosibirsk State Technical University,                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                     
+ *  Corresponding author:                                                                                            
+ *  E-mail: p_domnikov@mail.ru (Petr A. Domnikov) 
+ *  Version 2.1 December 17, 2020                                                         
+*/                                                                                        
 #include "stdafx.h" 
 #include "vec_prep_data.h"
 
@@ -50,7 +69,9 @@ Vec_Prep_Data::~Vec_Prep_Data()
 	if(dpr3d) {delete [] dpr3d; dpr3d=NULL;}
 	if(dpr0) {delete [] dpr0; dpr0=NULL;}
 }
-
+//-----------------------------------------------------------------------------  
+// reading the grid for VFEM MT                                                  
+//-----------------------------------------------------------------------------  
 int Vec_Prep_Data::Read_prep_data()
 {
 	In_Out R;

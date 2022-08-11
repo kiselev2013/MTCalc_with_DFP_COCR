@@ -1,8 +1,29 @@
+                                                                                             
+/**                                                                                          
+ * GENERAL REMARKS                                                                           
+ *                                                                                           
+ *  This code is freely available under the following conditions:                            
+ *                                                                                           
+ *  1) The code is to be used only for non-commercial purposes.                              
+ *  2) No changes and modifications to the code without prior permission of the developer.   
+ *  3) No forwarding the code to a third party without prior permission of the developer.    
+ *                                                                                           
+ *  			MTCalc_with_DFP_COCR                                                 
+ *  This file contains some basic routines for vector-matrix operations and error messages   
+ *                                                                                           
+ *  Written by Ph.D. Petr A. Domnikov                                                        
+ *  Novosibirsk State Technical University,                                                  
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                        
+ *  p_domnikov@mail.ru                                                                       
+ *  Version 1.2 April 7, 2021                                                                
+*/                                                                                           
 #include "stdafx.h"
 #include "T_Brick.h"
 
 extern ofstream logfile;
-
+//------------------------------------------------------------------------      
+// reports a memory allocation error                                            
+//------------------------------------------------------------------------      
 void Memory_allocation_error(const char *var, const char *func)
 {
 	string str;
@@ -13,7 +34,9 @@ void Memory_allocation_error(const char *var, const char *func)
 	cout << str << flush;
 	throw logic_error(str);
 }
-
+//------------------------------------------------------------------------   
+// reports a file open error and throws an exception                         
+//------------------------------------------------------------------------   
 void Cannot_open_file(const char *fname, const char *func)
 {
 	string str;
@@ -24,7 +47,9 @@ void Cannot_open_file(const char *fname, const char *func)
 	cout << str << flush;
 	throw logic_error(str);
 }
-
+//------------------------------------------------------------------------     
+// reports an error opening the file, but the program continues                
+//------------------------------------------------------------------------     
 void Cannot_open_file_but_continue(const char *fname, const char *func)
 {
 	string str;
@@ -33,7 +58,9 @@ void Cannot_open_file_but_continue(const char *fname, const char *func)
 	logfile << str << flush;
 	cerr    << str << flush;
 }
-
+//------------------------------------------------------------------------ 
+// Dot product                                                             
+//------------------------------------------------------------------------ 
 double Scal(double *a, double *b, long n)
 {
 	long i;
@@ -44,7 +71,7 @@ double Scal(double *a, double *b, long n)
 
 	return sum;
 }
-
+//------------------------------------------------------------  
 void Mult_Plot_AV(double *a, double *x, double *y, long n, long m)
 {
 	long i, j, temp;
@@ -60,14 +87,18 @@ void Mult_Plot_AV(double *a, double *x, double *y, long n, long m)
 		y[i] = sum;
 	}
 }
-
+//------------------------------------------------------------    
+// Projection of the vector v onto the o axis                     
+//------------------------------------------------------------    
 double Projection_On_Axis(double *v,double *o)
 {
 	double value;
 	value = Scal(v,o,3)/sqrt(Scal(o,o,3));
 	return value;
 }
-
+//------------------------------------------------------------    
+// Matrix-vector multiplication in dense format                   
+//------------------------------------------------------------    
 void Mult_Plot(double *a, double *x, double *y, long n)
 {
 	long i, j, temp;
@@ -83,14 +114,18 @@ void Mult_Plot(double *a, double *x, double *y, long n)
 		y[i] = sum;
 	}
 }
-
+//------------------------------------------------------------          
+// Euclidian norm of a vector                                           
+//------------------------------------------------------------          
 double Norm_Euclid(double *a, long n)
 {
 	double value;
 	value = sqrt(Scal(a,a,n));
 	return value;	
 }
-
+//------------------------------------------------------------     
+// Max norm of a vector                                            
+//------------------------------------------------------------     
 double Norm_Max(double *a, long n)
 {
 	double max, current;
@@ -106,7 +141,9 @@ double Norm_Max(double *a, long n)
 
 	return max;
 }
-
+//------------------------------------------------------------- 
+// Matrix-vector multiplication in sparse format                
+//------------------------------------------------------------- 
 void Mult_MV(long *ig, long *jg, double *ggl, double *ggu, double *di, double *x, double *y, long n)
 {
 	long i, j, k;
@@ -122,19 +159,25 @@ void Mult_MV(long *ig, long *jg, double *ggl, double *ggu, double *di, double *x
 		}
 	}
 }
-
+//----------------------------------------------------------- 
+// Maximum of 2 numbers                                       
+//----------------------------------------------------------- 
 long Max_Long(long a, long b)
 {
 	if(a > b) return a;
 	return b;
 }
-
+//-----------------------------------------------------------  
+// Minimum of 2 numbers                                        
+//-----------------------------------------------------------  
 long Min_Long(long a, long b)
 {
 	if(a < b) return a;
 	return b;
 }
-
+//-----------------------------------------------------------    
+// Sort 2 numbers                                                
+//-----------------------------------------------------------    
 void Sort2(long *a, long *b)
 {
 	long tmp;
@@ -145,7 +188,9 @@ void Sort2(long *a, long *b)
 		*b = tmp;
 	}
 }
-
+//-----------------------------------------------------------    
+// Distance between two 3D-points                                
+//-----------------------------------------------------------    
 double Interval(double *x, double *y)
 {
 	double r;
@@ -154,12 +199,14 @@ double Interval(double *x, double *y)
 
 	return r;
 }
-
+//-----------------------------------------------------------  
+// Distance between two parallel lines in 3D                   
+//-----------------------------------------------------------  
 double Interval_Parallel_Lines(double *a0, double *a1, double *b0, double *b1)
 {
-	double ax, ay, az; // направл€ющий вектор дл€ 1-й пр€мой
-	double x1, y1, z1; // точка на первой пр€мой
-	double x0, y0, z0; // точка на второй пр€мой
+	double ax, ay, az; // direction vector for the 1st line   
+	double x1, y1, z1; // point on the first line             
+	double x0, y0, z0; // point on the second line            
 	double det1, det2, det3;
 	double answer;
 
@@ -183,7 +230,9 @@ double Interval_Parallel_Lines(double *a0, double *a1, double *b0, double *b1)
 
 	return answer;
 }
-
+//-----------------------------------------------------------
+// Linear interpolation                                      
+//-----------------------------------------------------------
 double Spline(double x, long n, double *xyz, double *values)
 {
 	double s, xi;
@@ -228,9 +277,9 @@ double Calc_dof(double *J, double *func, long n_local_edge)
 {
 	double Jt[3];
 
-	// умножаем тангенциальный вектор на матрицу якоби
+	// multiply the tangential vector by the Jacobi matrix
 	Mult_Plot(J, (double*)TANGENT_VECTORS_ON_REFERENCE_CUBE[n_local_edge], Jt, 3);
 
-	// скал€рно умножаем на значение функции
+	// scalar multiply by the value of the function
 	return Scal(func, Jt, 3);
 }

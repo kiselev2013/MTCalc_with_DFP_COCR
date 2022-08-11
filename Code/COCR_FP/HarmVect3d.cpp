@@ -1,5 +1,21 @@
-// HarmVect3d.cpp : Defines the entry point for the console application.
-//
+/**                                                                                       
+ * GENERAL REMARKS                                                                        
+ *                                                                                        
+ *  This code is freely available under the following conditions:                         
+ *                                                                                        
+ *  1) The code is to be used only for non-commercial purposes.                           
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer. 
+ *                                                                                        
+ *  			MTCalc_with_DFP_COCR                                              
+ *  HarmVect3d.cpp : Defines the entry point for the console application.        
+ *                                                                                        
+ *  Written by Ph.D. Petr A. Domnikov                                                     
+ *  Novosibirsk State Technical University,                                               
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                     
+ *  p_domnikov@mail.ru                                                                    
+ *  Version 1.2 April 1, 2021                                                             
+*/                                                                                        
 
 #include "stdafx.h"
 #include "vec_prep_data.h"
@@ -14,6 +30,9 @@ ControlOMP omp;
 const int size_i=sizeof(int);
 const int size_d=sizeof(double);
 
+//----------------------------------------------------------------- 
+// Reading the mesh
+//----------------------------------------------------------------- 
 int inputvec(int p_kpar,int &p_n,int &p_nc,int &p_vc,int (**ed)[25],int (**edges)[2],int **ig_t,int **jg_t,double **gg_t)
 {
 	int i,j;
@@ -94,6 +113,8 @@ int inputvec(int p_kpar,int &p_n,int &p_nc,int &p_vc,int (**ed)[25],int (**edges
 
 
 //------------------------------------------------------------------------
+// Main routine 
+//------------------------------------------------------------------------
 int main()
 {
 	int i,e,j2;
@@ -111,9 +132,9 @@ int main()
 	if((d = new Vec_Prep_Data())==0) 
 		throw logic_error("no memory for 3d mesh");
 
-	// 0 - prosto raschet
-	// 1 - s vikladkoi summarnogo polya po uzlam
-	// 2 - dlya rascheta polya vliyaniya
+	// 0 - calculations only
+	// 1 - with calculation of the total field in nodes
+	// 2 - to calculate the field of influence
 
 	nproc=1;
 
@@ -207,7 +228,7 @@ int main()
 	double *gg_block=new double[ijg[ig_n_1]];
 	r.Read_Bin_File_Of_Double("gg", gg_block, ijg[ig_n_1], 1);
 
-	// решение СЛАУ
+	// SLAE solving
 
 	if((u = new double[2*(tmap->n)])==0) Memory_allocation_error("u", "Loop_Harm_Vector_FEM");
 
@@ -240,18 +261,18 @@ int main()
 		if(tsize3d)
 		{
 			r.Read_Bin_File_Of_Long("ig3d.dat", &ig_t[n_nodes_c], tsize3d+1, 1);
-			for(int i=0; i<n_nodes_c; i++) // дописываем единички в начало
+			for(int i=0; i<n_nodes_c; i++) 
 			{
 				ig_t[i] = 1;
 			}
-			for(int i=0; i<d->kuzlov+1; i++) // В Си нумерация с нуля
+			for(int i=0; i<d->kuzlov+1; i++) 
 			{
 				ig_t[i]--;
 			}
 		}
 		else
 		{
-			for(int i=0; i<d->kuzlov+1; i++) // дописываем единички в начало
+			for(int i=0; i<d->kuzlov+1; i++) 
 			{
 				ig_t[i] = 0;
 			}
@@ -311,7 +332,7 @@ int main()
 
 	tNow = std::chrono::high_resolution_clock::now();
 	logfile << std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1> >>(tNow - tProgramStart).count() << " : Writing result" << endl;
-	// запись решения в файл
+	
 	r.Write_Bin_File_Of_Double("v3.dat", u, n, 1);
 
 	if (tsize3d > 0)

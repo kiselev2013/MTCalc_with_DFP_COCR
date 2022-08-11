@@ -1,6 +1,8 @@
-#pragma once
+// To compile, use Microsoft Visual Studio C++ compiler
+//
+// This module contains special constants for error codes
 
-/*! коды ошибок в подпрограммах FEM */
+#pragma once
 
 #define RETCODE_OK				0x0000
 #define RETCODE_NOMEM			0x0001

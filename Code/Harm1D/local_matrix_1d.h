@@ -1,23 +1,42 @@
+/**                                                                                        
+ * GENERAL REMARKS                                                                         
+ *                                                                                         
+ *  This code is freely available under the following conditions:                          
+ *                                                                                         
+ *  1) The code is to be used only for non-commercial purposes.                            
+ *  2) No changes and modifications to the code without prior permission of the developer. 
+ *  3) No forwarding the code to a third party without prior permission of the developer.  
+ *                                                                                         
+ *  			MTCalc_with_DFP_COCR                                               
+ *  Calculations of local matrices and local RHS for 1d problem                            
+ *                                                                                         
+ *  Written by Ph.D. Petr A. Domnikov                                                      
+ *  Novosibirsk State Technical University,                                                
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                      
+ *  p_domnikov@mail.ru                                                                     
+ *  Version 1.2 October 13, 2020                                                           
+*/                                                                                         
+
 #pragma once
 class Local_matrix_1d
 {
 public:
 
-	double b[2][2]; // матрица жёсткости
-	double c[2][2]; // матрица массы 
-	double f_re[2], f_im[2]; // значения правой части в узлах
-	double g_re[2], g_im[2]; // векторы правой части для Re и Im уравнений
-	double a[4][4]; // матрица для гармонической задачи
-	double g[4]; // вектор правой части для гармонической задачи
+	double b[2][2]; // stiffness matrix
+	double c[2][2]; // mass matrix
+	double f_re[2], f_im[2]; // right side values in nodes
+	double g_re[2], g_im[2]; // right side vectors for Re and Im equations
+	double a[4][4]; // matrix for the harmonic problem
+	double g[4]; // vector of the right side for the harmonic problem
 
-	// коэффициенты уравнения
+	// equation coefficients
 	double mu;
 	double sigma;
 	double omega;
 
-	double h; // размер конечного элемента
+	double h; // size of finite element
 
-	long alpha; // направление тока
+	long alpha; // direction of the electric current
 
 
 	Local_matrix_1d(double h, double mu, double sigma, double omega,

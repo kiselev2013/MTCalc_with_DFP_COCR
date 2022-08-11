@@ -1,3 +1,23 @@
+/**                                                                                                         
+ * GENERAL REMARKS                                                                                          
+ *                                                                                                          
+ *  This code is freely available under the following conditions:                                           
+ *                                                                                                          
+ *  1) The code is to be used only for non-commercial purposes.                                             
+ *  2) No changes and modifications to the code without prior permission of the developer.                  
+ *  3) No forwarding the code to a third party without prior permission of the developer.                   
+ *                                                                                                          
+ *  			MTCalc_with_DFP_COCR                                                                
+ *  This file contains some basic routines for assembling the finite element matrix and vector of the right hand side                                                               
+ *                                                                                                          
+ *  Written by Ph.D. Petr A. Domnikov                                                                       
+ *  Novosibirsk State Technical University,                                                                 
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia                                                       
+ *  p_domnikov@mail.ru                                                                                      
+ *  Version 1.3 April 5, 2021                                                                               
+*/                                                                                                         
+
+
 #pragma once
 #include "T_Brick.h"
 
@@ -6,17 +26,17 @@ class VecBlockSLAE
 public:
 	long *ig, *jg;
 
-	double *di_block; // диагональные блоки
-	double *gg_block; // внедиагональные блоки
-	long *idi; // адреса хранения начал диагональных блоков
-	long *ijg; // адреса хранения начал внедиагональных блоков
+	double *di_block; // diagonal blocks
+	double *gg_block; // off-diagonal blocks
+	long *idi; // storage addresses of the beginnings of diagonal blocks
+	long *ijg; // storage addresses of beginnings of off-diagonal blocks
 
-	double *pr; // глобальный вектор правой части
+	double *pr; // global right-hand side vector
 
-	long n_elem;    // число элементов в сетке
-	long n_edges;   // число рёбер (всего)
-	long n;         // размерность СЛАУ
-	long nb;        // число блоков (блочная размерность СЛАУ)
+	long n_elem;    // number of elements in the mesh
+	long n_edges;   // number of edges (total)
+	long n;         // SLAE dimension
+	long nb;        // number of blocks (block dimension of SLAE)
 	long ig_n_1;    // ig(n+1)-1    
 
 	long (*nver)[14];

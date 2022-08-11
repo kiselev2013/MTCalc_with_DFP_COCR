@@ -1,3 +1,22 @@
+/**
+ * GENERAL REMARKS
+ *
+ *  This code is freely available under the following conditions:
+ *
+ *  1) The code is to be used only for non-commercial purposes.
+ *  2) No changes and modifications to the code without prior permission of the developer.
+ *  3) No forwarding the code to a third party without prior permission of the developer.
+ *
+ *              MTCalc_with_DFP_COCR
+ *  Header file for Subdomain.cpp
+ *
+ *  Written by Prof. Marina G. Persova  and Ph.D. Petr A. Domnikov 
+ *  Novosibirsk State Technical University,
+ *  20 Prospekt K. Marksa, Novosibirsk,630073, Russia
+ *  mpersova@mail.ru
+ *  Version 1.5 December 17, 2020
+*/
+
 #pragma once
 #include "ElemNeib.h"
 #include "Portret.h"
@@ -21,13 +40,10 @@ struct Local_Vector
 	}
 };
 
-//------------------------------------------------------------------------
-// сетка для подобласти, в к-рой строится результант
-//------------------------------------------------------------------------
 class Subdomain
 {
 public:
-	long material; // соответствующий номер материала из nvkat (если == -1, то подобласть для всех материалов)
+	long material;
 
 	vector<int> renumElemFromOldToNew;
 	vector<int> renumElemFromNewToOld;
@@ -46,30 +62,22 @@ public:
 	double (*xyz_r)[3];
 	Portret *p;
 
-	// T - матрица
 	vector<int> ig_t,jg_t;
 	vector<double> gg_t;
 
-	void build_elem_neib_first(int nx,int ny,int nz,int *regular,vector<bool> &ElemCheck);
 	void BuildSigmaStruct(vector<_SIGMA_N> &SIGMA_N,double (*xyz_p)[3]);
 	void BuildTMatrix(vector<_SIGMA_N> &SIGMA_N);
 	void calc_Tij(vector<_SIGMA_N> &SIGMA_N,int j,int li,vector<int> &iv,vector<double> &dv,int &t,double vklad);
 	void CalcValuesAll_Node(double *v);
 	void Correct_T_Node(int nc,vector<_SIGMA_N> &SIGMA_N,int i,int p,int *pnt,bool &Correct_T_Flag,double pVal1,double pVal2);
 	
-	// СЛАУ
 	double *di;
 	double *gg;
 	double *pr;
 	double *x;
 
-	// факторизованная матрица СЛАУ
 	double *d;
 	double *sg;
-
-	int ExportTecplot(char *fname);
-	int ExportTecplot(char *fname, double *v3);
-
 
 	int Init(int material, int levelNeighbors, vector< vector<long> > &PointresForElem, AbstractFEM3D *TaskCalcMesh);
 
@@ -84,4 +92,3 @@ public:
 
 	pardiso_solver prds;
 };
-//------------------------------------------------------------------------
